@@ -1,1 +1,2438 @@
+<!DOCTYPE html>
+<html lang="rw">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b2545" />
+<meta name="description" content="MAYE Shop Interview & Analysis Platform — Powered by MAYE SYSTEM" />
 
+<!--
+============================================================
+MAYE SHOP INTERVIEW & ANALYSIS PLATFORM (MAYE-SIAP v2.0.0)
+Powered by MAYE SYSTEM
+============================================================
+FILE 1 of 3: index.html (Version 2 — Enhanced)
+
+WHAT'S NEW IN v2.0.0:
+------------------------------------------------------------
+✅ Admin Access button HIDDEN by default (use ?admin=1)
+✅ Admin UID HIDDEN — click "Erekana UID" to reveal
+✅ PDF Export (blueprint + response) — beautiful cover page
+✅ JSON Download (response, blueprint, all responses)
+✅ Dashboard statistics panel
+✅ Better empty states & loading skeletons
+✅ Improved toast notifications with icons
+✅ Sort, count, "Clear filters"
+✅ Print styles complete
+✅ Accessibility improvements
+
+SECURITY MODEL (Spark plan):
+------------------------------------------------------------
+- Anonymous Auth gives each browser a UID
+- Steven can WRITE responses (no read)
+- Only UIDs in adminAllowList can READ responses
+- adminAllowList can only be written in Firebase Console
+- Admin Access button hidden by default (?admin=1)
+- Admin UID hidden until explicitly revealed
+
+SETUP:
+------------------------------------------------------------
+1. Deploy index.html + database.rules.json + sw.js
+2. Publish database.rules.json in Firebase Console
+3. Open index.html?admin=1 in browser
+4. Copy the UID shown (click "Erekana UID")
+5. In Firebase Console → Data:
+   /systemSettings/interviewFlags/adminAllowList/{UID} = true
+6. Click "Retry" in admin gate
+7. Normal users: open index.html (no ?admin=1) → no Admin Access button
+============================================================
+-->
+
+<title>MAYE Shop Interview — Powered by MAYE SYSTEM</title>
+
+<link rel="icon" type="image/png" href="https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png" />
+<link rel="apple-touch-icon" href="https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png" />
+
+<!-- PWA manifest embedded as data URI -->
+<link rel="manifest" href='data:application/json,{"name":"MAYE Shop Interview","short_name":"MAYE SIAP","description":"Interview & Analysis Platform — Powered by MAYE SYSTEM","start_url":"./index.html","display":"standalone","background_color":"#0b2545","theme_color":"#0b2545","orientation":"portrait","icons":[{"src":"https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png","sizes":"192x192","type":"image/png","purpose":"any"},{"src":"https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}' />
+
+<!-- Tailwind CSS Play CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          'maye-primary': '#0b2545',
+          'maye-primary-600': '#13315c',
+          'maye-primary-400': '#1d4f91',
+          'maye-accent': '#d4af37',
+          'maye-success': '#0f9d58',
+          'maye-warning': '#f4b400',
+          'maye-danger': '#d93025',
+          'maye-info': '#1a73e8',
+          'maye-bg': '#f4f6fb',
+          'maye-surface': '#ffffff',
+          'maye-muted': '#eef1f7',
+          'maye-text-strong': '#0b1524',
+          'maye-text-base': '#1f2a37',
+          'maye-text-muted': '#5b6675',
+          'maye-border': '#e3e8f0',
+          'maye-border-strong': '#c8d1de',
+        },
+        fontFamily: {
+          'maye': ['-apple-system','BlinkMacSystemFont','Segoe UI','Roboto','Helvetica Neue','Arial','sans-serif'],
+        },
+        borderRadius: {
+          'maye-sm': '8px',
+          'maye-md': '12px',
+          'maye-lg': '16px',
+        },
+        boxShadow: {
+          'maye-sm': '0 1px 2px rgba(11,37,69,0.06)',
+          'maye-md': '0 4px 14px rgba(11,37,69,0.08)',
+          'maye-lg': '0 12px 40px rgba(11,37,69,0.16)',
+        },
+      },
+    },
+  };
+</script>
+
+<!-- html2pdf.js for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+  :root { color-scheme: light; }
+  html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+  body { background: #f4f6fb; color: #1f2a37; -webkit-font-smoothing: antialiased; }
+  * { -webkit-tap-highlight-color: transparent; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .screen.flex-active { display: flex; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #eef1f7; }
+  ::-webkit-scrollbar-thumb { background: #c8d1de; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9aa8bd; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .maye-spinner {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 4px solid rgba(212,175,55,0.2);
+    border-top-color: #d4af37;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.35s ease-out; }
+
+  @keyframes pulseSoft { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .pulse-soft { animation: pulseSoft 1.8s ease-in-out infinite; }
+
+  @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #0b2545; color: #fff; padding: 12px 20px; border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(11,37,69,0.28); font-size: 14px; font-weight: 600;
+    z-index: 9999; max-width: 90vw; text-align: center;
+    display: flex; align-items: center; gap: 8px;
+    animation: slideUp 0.25s ease-out;
+  }
+  .toast.success { background: #0f9d58; }
+  .toast.error { background: #d93025; }
+  .toast.warn { background: #f4b400; color: #0b1524; }
+
+  button:focus-visible, a:focus-visible, input:focus-visible,
+  select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #d4af37; outline-offset: 2px;
+  }
+
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  .json-view {
+    background: #0b1524; color: #d4f1e0; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.55; border-radius: 12px; padding: 16px;
+    overflow: auto; max-height: 60vh; white-space: pre;
+  }
+
+  /* Skeleton */
+  @keyframes skeleton { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+  .skeleton {
+    background: linear-gradient(90deg, #eef1f7 25%, #e3e8f0 50%, #eef1f7 75%);
+    background-size: 200% 100%;
+    animation: skeleton 1.4s ease-in-out infinite;
+    border-radius: 8px;
+  }
+
+  /* Print — basic fallback (PDF uses html2pdf, not print) */
+  @media print {
+    body { background: #fff !important; }
+    .no-print { display: none !important; }
+  }
+
+  /* PDF-specific styles (applied to .pdf-doc container before html2pdf) */
+  .pdf-doc {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    color: #0b1524;
+    background: #fff;
+    width: 210mm;
+    padding: 20mm;
+  }
+  .pdf-doc h1 { font-size: 24pt; color: #0b2545; margin: 0 0 8mm 0; }
+  .pdf-doc h2 { font-size: 16pt; color: #0b2545; margin: 6mm 0 3mm 0; border-bottom: 2px solid #d4af37; padding-bottom: 2mm; }
+  .pdf-doc h3 { font-size: 12pt; color: #13315c; margin: 4mm 0 2mm 0; }
+  .pdf-doc p { font-size: 10pt; line-height: 1.5; margin: 0 0 2mm 0; }
+  .pdf-doc .pdf-label { font-size: 9pt; color: #5b6675; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pdf-doc .pdf-value { font-size: 10pt; color: #0b1524; margin-bottom: 2mm; }
+  .pdf-doc .pdf-row { display: flex; gap: 4mm; margin-bottom: 2mm; }
+  .pdf-doc .pdf-col { flex: 1; }
+  .pdf-doc .pdf-card {
+    background: #f4f6fb; border-left: 4px solid #0b2545; padding: 4mm; margin: 3mm 0;
+    border-radius: 2mm;
+  }
+  .pdf-doc .pdf-cover {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    min-height: 250mm; text-align: center;
+  }
+  .pdf-doc .pdf-cover img { width: 30mm; height: 30mm; margin-bottom: 10mm; }
+  .pdf-doc .pdf-cover .pdf-title { font-size: 28pt; color: #0b2545; font-weight: bold; margin-bottom: 4mm; }
+  .pdf-doc .pdf-cover .pdf-subtitle { font-size: 14pt; color: #d4af37; margin-bottom: 20mm; }
+  .pdf-doc .pdf-cover .pdf-meta { font-size: 10pt; color: #5b6675; margin: 2mm 0; }
+  .pdf-doc .pdf-cover .pdf-ref {
+    font-size: 12pt; color: #0b2545; font-weight: bold;
+    background: #f4f6fb; padding: 4mm 8mm; border-radius: 2mm; margin-top: 10mm;
+  }
+  .pdf-doc .pdf-footer {
+    font-size: 8pt; color: #5b6675; text-align: center;
+    padding-top: 4mm; border-top: 1px solid #e3e8f0; margin-top: 6mm;
+  }
+  .pdf-doc .pdf-badge {
+    display: inline-block; padding: 1.5mm 3mm; border-radius: 2mm;
+    font-size: 8pt; font-weight: bold;
+  }
+  .pdf-doc .pdf-badge-new { background: #e6f0fb; color: #1a73e8; }
+  .pdf-doc .pdf-badge-reviewed { background: #fff4e5; color: #f4b400; }
+  .pdf-doc .pdf-badge-ready { background: #e6f4ea; color: #0f9d58; }
+</style>
+</head>
+<body class="min-h-screen bg-maye-bg font-maye text-maye-text-base">
+
+<!-- ============================================================
+     GLOBAL HEADER
+     ============================================================ -->
+<header class="bg-maye-primary text-white shadow-maye-md no-print">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <img src="https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png"
+           alt="MAYE" class="h-9 w-9 rounded-maye-sm object-contain bg-white p-0.5 shrink-0" />
+      <div class="min-w-0">
+        <div class="text-sm font-bold leading-tight truncate">MAYE Shop Interview</div>
+        <div class="text-[11px] text-maye-accent leading-tight truncate">Powered by MAYE SYSTEM</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+      <span id="connBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10">
+        <span class="w-2 h-2 rounded-full bg-maye-success"></span> Online
+      </span>
+      <button id="btnHelp" aria-label="Ubufasha" class="px-3 py-1.5 rounded-maye-sm bg-white/10 hover:bg-white/20 transition font-semibold">
+        ❓ Ubufasha
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+<main class="max-w-6xl mx-auto px-4 py-6">
+
+  <!-- ============ SCREEN: LOADING ============ -->
+  <section id="screenLoading" class="screen flex-active flex-col items-center justify-center min-h-[60vh] gap-6">
+    <div class="maye-spinner"></div>
+    <p class="text-maye-text-muted font-semibold">Turateganya...</p>
+    <p id="loadingError" class="hidden text-maye-danger text-sm text-center max-w-md"></p>
+  </section>
+
+  <!-- ============ SCREEN: WELCOME ============ -->
+  <section id="screenWelcome" class="screen">
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border overflow-hidden fade-in">
+      <div class="bg-maye-primary text-white p-6 sm:p-8">
+        <div class="flex items-center gap-4">
+          <img src="https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png"
+               alt="MAYE" class="h-14 w-14 rounded-maye-md object-contain bg-white p-1" />
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold leading-tight">Murakaza neza!</h1>
+            <p class="text-maye-accent text-sm mt-1">Ikiganiro cyo kumenya uko iduka ryanyu rikora</p>
+          </div>
+        </div>
+      </div>
+      <div class="p-6 sm:p-8 space-y-4">
+        <p class="text-maye-text-base leading-relaxed">
+          Iki ni ikiganiro kigufi cyo kumenya uko iduka ryanyu rikora.
+          Ntabwo ari ikizamini — nta gisubizo cy'ukuri cyangwa ikinyoma.
+        </p>
+        <p class="text-maye-text-base leading-relaxed">
+          Ibisubizo byanyu bizadufasha kubaka sisitemu ikorera iduka ryanyu neza.
+        </p>
+        <div class="bg-maye-muted border border-maye-border rounded-maye-md p-4 text-sm text-maye-text-base">
+          <div class="font-bold mb-1">⏱ Igihe giteganyijwe: iminota 25–35</div>
+          <div class="text-maye-text-muted">🔒 Amakuru yose arinzwe. Nta muntu ushobora kubona ibisubizo byanyu atabifitiye uburenganzira.</div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button id="btnStartInterview"
+            class="flex-1 bg-maye-primary hover:bg-maye-primary-600 text-white font-bold px-6 py-3.5 rounded-maye-md shadow-maye-md transition">
+            🚀 Tangira ikiganiro
+          </button>
+          <button id="btnResumeDraft"
+            class="hidden flex-1 bg-maye-warning hover:brightness-95 text-maye-primary font-bold px-6 py-3.5 rounded-maye-md shadow-maye-md transition">
+            📝 Komeza draft yawe
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: INTERVIEW ============ -->
+  <section id="screenInterview" class="screen">
+    <div class="mb-4 no-print">
+      <div class="flex items-center justify-between text-xs font-semibold text-maye-text-muted mb-1.5">
+        <span>Igice <span id="sectionNum">1</span> / 14</span>
+        <span id="sectionPercent">7%</span>
+      </div>
+      <div class="h-2 bg-maye-muted rounded-full overflow-hidden">
+        <div id="progressBar" class="h-full bg-maye-accent rounded-full transition-all duration-300" style="width:7%"></div>
+      </div>
+    </div>
+
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border fade-in">
+      <div class="border-b border-maye-border p-5 sm:p-6">
+        <h2 id="sectionTitle" class="text-xl sm:text-2xl font-bold text-maye-text-strong">Igice</h2>
+        <p id="sectionSubtitle" class="text-sm text-maye-text-muted mt-1"></p>
+      </div>
+      <div id="sectionBody" class="p-5 sm:p-6 space-y-5"></div>
+      <div id="observationBox" class="border-t border-maye-border p-5 sm:p-6 bg-maye-muted/60">
+        <label class="block text-sm font-bold text-maye-primary-600 mb-1.5">
+          👁 Ibyo wabonye (Observation — si ibyo nyir'iduka yavuze)
+        </label>
+        <textarea id="observationInput" rows="3"
+          class="w-full bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent focus:border-maye-primary-400"
+          placeholder="Urugero: Nyir'iduka avuga ko afite imifuka 100 bya cement, ariko nk'uko mbibona ni 40 gusa..."></textarea>
+      </div>
+      <div class="border-t border-maye-border p-5 sm:p-6 flex items-center justify-between gap-3">
+        <button id="btnPrevSection"
+          class="px-5 py-2.5 rounded-maye-md bg-maye-muted hover:bg-maye-border text-maye-text-base font-semibold transition disabled:opacity-40">
+          ← Inyuma
+        </button>
+        <div class="flex items-center gap-2">
+          <span id="saveHint" class="text-xs text-maye-text-muted hidden sm:inline">💾 Draft ibikwa bwite</span>
+          <button id="btnNextSection"
+            class="px-6 py-2.5 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white font-bold shadow-maye-md transition">
+            Komeza →
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: REVIEW ============ -->
+  <section id="screenReview" class="screen">
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border fade-in">
+      <div class="border-b border-maye-border p-5 sm:p-6">
+        <h2 class="text-xl sm:text-2xl font-bold text-maye-text-strong">📋 Reba ibisubizo byawe</h2>
+        <p class="text-sm text-maye-text-muted mt-1">Reba neza mbere yo kohereza. Ushobora guhindura igice icyo ari cyo.</p>
+      </div>
+      <div id="reviewBody" class="p-5 sm:p-6 space-y-4"></div>
+      <div class="border-t border-maye-border p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <button id="btnBackToEdit"
+          class="w-full sm:w-auto px-5 py-2.5 rounded-maye-md bg-maye-muted hover:bg-maye-border text-maye-text-base font-semibold transition">
+          ✏️ Hindura
+        </button>
+        <button id="btnSubmit"
+          class="w-full sm:w-auto px-8 py-3 rounded-maye-md bg-maye-success hover:brightness-95 text-white font-bold shadow-maye-md transition">
+          ✓ Ohereza ibisubizo
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: CONFIRMATION ============ -->
+  <section id="screenConfirmation" class="screen">
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border p-6 sm:p-10 text-center max-w-2xl mx-auto fade-in">
+      <div class="mx-auto w-16 h-16 rounded-full bg-maye-success/15 flex items-center justify-center mb-4">
+        <svg class="w-9 h-9 text-maye-success" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-maye-text-strong">🎉 Murakoze cyane!</h2>
+      <p class="text-maye-text-base mt-2">Ibisubizo byanyu byoherejwe neza.</p>
+      <div class="mt-5 inline-block bg-maye-muted border border-maye-border rounded-maye-md px-5 py-3">
+        <div class="text-xs text-maye-text-muted font-semibold uppercase tracking-wide">Nimero y'ikiganiro</div>
+        <div id="confirmationRef" class="text-lg font-bold text-maye-primary">INT-XXXXX</div>
+      </div>
+      <p id="syncNote" class="hidden text-sm text-maye-warning font-semibold mt-4"></p>
+      <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+        <button id="btnNewInterview"
+          class="px-6 py-3 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white font-bold shadow-maye-md transition">
+          + Tangira ikindi kiganiro
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: ADMIN GATE ============ -->
+  <section id="screenAdminGate" class="screen">
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border p-6 sm:p-8 max-w-2xl mx-auto fade-in">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-full bg-maye-primary/10 flex items-center justify-center">
+          <span class="text-maye-primary font-bold">🔐</span>
+        </div>
+        <h2 class="text-2xl font-bold text-maye-text-strong">Admin Access</h2>
+      </div>
+      <p class="text-sm text-maye-text-muted mt-1 mb-5">Dashboard ya developer. Bisaba ko UID yawe iba muri Firebase allow-list.</p>
+
+      <div class="bg-maye-muted border border-maye-border rounded-maye-md p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-xs font-semibold text-maye-text-muted uppercase tracking-wide">UID yawe (anonymous)</div>
+          <button id="btnToggleUid" class="text-xs font-bold text-maye-primary-400 hover:text-maye-primary-600 transition">👁 Erekana UID</button>
+        </div>
+        <div id="adminUid" class="mt-1 font-mono text-sm break-all text-maye-primary-600 font-semibold select-none blur-sm">—</div>
+      </div>
+
+      <div class="mt-5 space-y-2 text-sm text-maye-text-base leading-relaxed">
+        <p class="font-bold text-maye-primary-600">📝 Uburyo bwo kwiyandikisha (rimwe gusa):</p>
+        <ol class="list-decimal list-inside space-y-1.5 text-maye-text-base">
+          <li>Koporora UID iri hejuru (kanda "Erekana UID" mbere).</li>
+          <li>Jya muri <span class="font-semibold">Firebase Console → Realtime Database → Data</span>.</li>
+          <li>Shyiramo <code class="bg-white border border-maye-border px-1.5 py-0.5 rounded text-xs font-mono">/systemSettings/interviewFlags/adminAllowList/{UID}</code> = <code class="bg-white border border-maye-border px-1.5 py-0.5 rounded text-xs font-mono">true</code></li>
+          <li>Kanda <span class="font-semibold">Retry</span> hepfo.</li>
+        </ol>
+      </div>
+
+      <div id="adminGateMsg" class="hidden mt-4 text-sm font-semibold rounded-maye-md px-4 py-2.5"></div>
+
+      <div class="mt-6 flex flex-col sm:flex-row gap-3">
+        <button id="btnAdminRetry"
+          class="flex-1 px-6 py-3 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white font-bold shadow-maye-md transition">
+          🔄 Retry
+        </button>
+        <button id="btnAdminCancel"
+          class="flex-1 px-6 py-3 rounded-maye-md bg-maye-muted hover:bg-maye-border text-maye-text-base font-semibold transition">
+          ← Subira
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: DASHBOARD LIST ============ -->
+  <section id="screenDashboard" class="screen">
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border fade-in">
+      <div class="border-b border-maye-border p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-maye-text-strong">📊 Dashboard</h2>
+          <p class="text-sm text-maye-text-muted mt-1">Ibisubizo byose byakiriwe</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnRefreshList" class="px-4 py-2 rounded-maye-md bg-maye-muted hover:bg-maye-border text-sm font-semibold transition">🔄 Refresh</button>
+          <button id="btnExportCsv" class="px-4 py-2 rounded-maye-md bg-maye-info hover:brightness-95 text-white text-sm font-bold shadow-maye-sm transition">📊 CSV</button>
+          <button id="btnExportAllJson" class="px-4 py-2 rounded-maye-md bg-maye-accent hover:brightness-95 text-maye-primary text-sm font-bold shadow-maye-sm transition">📥 JSON (zose)</button>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div id="statsPanel" class="p-5 sm:p-6 border-b border-maye-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-maye-info/5 border border-maye-info/20 rounded-maye-md p-3">
+          <div class="text-xs font-bold text-maye-info uppercase tracking-wide">Total</div>
+          <div id="statTotal" class="text-2xl font-bold text-maye-text-strong">0</div>
+        </div>
+        <div class="bg-maye-info/5 border border-maye-info/20 rounded-maye-md p-3">
+          <div class="text-xs font-bold text-maye-info uppercase tracking-wide">New</div>
+          <div id="statNew" class="text-2xl font-bold text-maye-info">0</div>
+        </div>
+        <div class="bg-maye-warning/5 border border-maye-warning/20 rounded-maye-md p-3">
+          <div class="text-xs font-bold text-maye-warning uppercase tracking-wide">Reviewed</div>
+          <div id="statReviewed" class="text-2xl font-bold text-maye-warning">0</div>
+        </div>
+        <div class="bg-maye-success/5 border border-maye-success/20 rounded-maye-md p-3">
+          <div class="text-xs font-bold text-maye-success uppercase tracking-wide">Blueprint Ready</div>
+          <div id="statReady" class="text-2xl font-bold text-maye-success">0</div>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 border-b border-maye-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 no-print">
+        <input id="fSearch" type="text" placeholder="🔍 Shakisha izina ry'iduka cyangwa nyir'iduka"
+          class="bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent" />
+        <select id="fDistrict" class="bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent">
+          <option value="">Akarere kose</option>
+        </select>
+        <select id="fStatus" class="bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent">
+          <option value="">Status yose</option>
+          <option value="new">New</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="blueprint_ready">Blueprint Ready</option>
+        </select>
+        <div class="flex gap-2">
+          <select id="fBudget" class="flex-1 bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent">
+            <option value="">Budget yose</option>
+            <option value="0">0</option>
+            <option value="<100k">&lt;100k</option>
+            <option value="100k-500k">100k–500k</option>
+            <option value="500k-2M">500k–2M</option>
+            <option value="2M-5M">2M–5M</option>
+            <option value=">5M">&gt;5M</option>
+          </select>
+          <button id="btnClearFilters" class="px-3 py-2 rounded-maye-md bg-maye-muted hover:bg-maye-border text-sm font-semibold transition" title="Siba filters">✕</button>
+        </div>
+      </div>
+
+      <div id="responseList" class="p-5 sm:p-6 space-y-3"></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: RESPONSE DETAIL ============ -->
+  <section id="screenDetail" class="screen">
+    <div class="mb-3 no-print">
+      <button id="btnBackToList" class="text-sm font-semibold text-maye-primary-400 hover:text-maye-primary-600 transition">← Subira ku rutonde</button>
+    </div>
+    <div id="detailBody" class="space-y-4"></div>
+  </section>
+
+  <!-- ============ SCREEN: BLUEPRINT ============ -->
+  <section id="screenBlueprint" class="screen">
+    <div class="mb-3 no-print">
+      <button id="btnBackFromBlueprint" class="text-sm font-semibold text-maye-primary-400 hover:text-maye-primary-600 transition">← Subira ku rutonde</button>
+    </div>
+    <div class="bg-maye-surface rounded-maye-lg shadow-maye-md border border-maye-border fade-in">
+      <div class="border-b border-maye-border p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-maye-text-strong">📄 Development Blueprint JSON</h2>
+          <p class="text-sm text-maye-text-muted mt-1">Koporora, download JSON, cyangwa PDF.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 no-print">
+          <button id="btnCopyBlueprint" class="px-4 py-2 rounded-maye-md bg-maye-muted hover:bg-maye-border text-sm font-semibold transition">📋 Copy</button>
+          <button id="btnDownloadBlueprint" class="px-4 py-2 rounded-maye-md bg-maye-info hover:brightness-95 text-white text-sm font-bold shadow-maye-sm transition">📥 JSON</button>
+          <button id="btnPdfBlueprint" class="px-4 py-2 rounded-maye-md bg-maye-danger hover:brightness-95 text-white text-sm font-bold shadow-maye-sm transition">📄 PDF</button>
+          <button id="btnPrintBlueprint" class="px-4 py-2 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white text-sm font-bold shadow-maye-sm transition">🖨 Print</button>
+        </div>
+      </div>
+      <div class="p-5 sm:p-6">
+        <pre id="blueprintJson" class="json-view"></pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="max-w-6xl mx-auto px-4 py-6 mt-4 border-t border-maye-border no-print">
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-maye-text-muted">
+    <div class="flex items-center gap-2">
+      <img src="https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png" alt="MAYE" class="h-5 w-5 rounded object-contain bg-white p-0.5" />
+      <span>MAYE-SIAP v2.0.0 — Powered by <span class="font-semibold text-maye-primary-600">MAYE SYSTEM</span></span>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Admin Access button — HIDDEN by default. Shown only if URL has ?admin=1 -->
+      <button id="btnAdminAccess" class="hidden font-semibold hover:text-maye-primary-600 transition">🔐 Admin Access</button>
+      <button id="btnShowHelp" class="font-semibold hover:text-maye-primary-600 transition">❓ Ubufasha</button>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     HELP MODAL
+     ============================================================ -->
+<div id="helpModal" class="hidden fixed inset-0 z-50 bg-black/50 items-center justify-center p-4 no-print">
+  <div class="bg-maye-surface rounded-maye-lg shadow-maye-lg border border-maye-border max-w-lg w-full p-6 max-h-[85vh] overflow-auto">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <h3 class="text-lg font-bold text-maye-text-strong">❓ Ubufasha</h3>
+      <button id="btnCloseHelp" class="text-maye-text-muted hover:text-maye-text-strong text-xl leading-none">×</button>
+    </div>
+    <div class="text-sm text-maye-text-base space-y-3 leading-relaxed">
+      <p><strong>Iki ni iki?</strong> Iki ni ikiganiro cyo kumenya uko iduka ryanyu rikora. Ntabwo ari ikizamini.</p>
+      <p><strong>Igihe:</strong> Iminota 25–35.</p>
+      <p><strong>Offline:</strong> Nubwo nta internet, ushobora gukomeza. Draft ibikwa muri telefone yawe.</p>
+      <p><strong>Ibisubizo:</strong> Nta gisubizo cy'ukuri cyangwa ikinyoma. Subiza uko ubona.</p>
+      <p><strong>Amakuru yanyu:</strong> Arinzwe. Nta muntu ushobora kubona ibisubizo byanyu atabifitiye uburenganzira.</p>
+    </div>
+    <button id="btnCloseHelp2" class="mt-5 w-full px-5 py-2.5 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white font-bold transition">Ndabyumva</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div id="toastContainer"></div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script type="module">
+/* ============================================================
+   0. FIREBASE INIT
+   ============================================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDatabase, ref, push, set, get, update,
+  query, orderByChild, limitToLast
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA8lJkCesjWB9xEUqnD12O6ABLAM1wfIdA",
+  authDomain: "purchase-income-system.firebaseapp.com",
+  databaseURL: "https://purchase-income-system-default-rtdb.firebaseio.com",
+  projectId: "purchase-income-system",
+  storageBucket: "purchase-income-system.firebasestorage.app",
+  messagingSenderId: "618042535830",
+  appId: "1:618042535830:web:e5ebd7d0d3eaf5a2a4b7b7",
+  measurementId: "G-Y0VZM54V5L"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const APP_VERSION = "2.0.0";
+const SCHEMA_VERSION = 1;
+const TOTAL_SECTIONS = 14;
+const LOGO_URL = "https://ik.imagekit.io/73qho7kh9/file_000000003e9471f88734aae4d52e7513%20(1).png";
+
+/* ============================================================
+   1. STATE
+   ============================================================ */
+const state = {
+  uid: null,
+  screen: "screenLoading",
+  currentSection: 0,
+  answers: {},
+  observations: {},
+  samples: [],
+  responses: [],
+  currentResponseId: null,
+  currentBlueprint: null,
+  isAdmin: false,
+  online: navigator.onLine,
+  uidVisible: false,
+};
+
+/* ============================================================
+   2. SCREENS
+   ============================================================ */
+function showScreen(id, flex = false) {
+  document.querySelectorAll(".screen").forEach(el => {
+    el.classList.remove("active", "flex-active");
+  });
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add(flex ? "flex-active" : "active");
+  state.screen = id;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ============================================================
+   3. TOAST (with icons)
+   ============================================================ */
+function toast(msg, type = "") {
+  const icons = { success: "✓", error: "✕", warn: "⚠", "": "ℹ" };
+  const div = document.createElement("div");
+  div.className = "toast" + (type ? " " + type : "");
+  div.innerHTML = `<span class="text-lg">${icons[type] || "ℹ"}</span><span>${msg}</span>`;
+  document.getElementById("toastContainer").appendChild(div);
+  setTimeout(() => { div.style.opacity = "0"; div.style.transition = "opacity .3s"; }, 2600);
+  setTimeout(() => div.remove(), 3000);
+}
+
+/* ============================================================
+   4. SECTION DEFINITIONS
+   ============================================================ */
+const SECTIONS = [
+  {
+    id: "section1", title: "Umwirondoro w'iduka", subtitle: "Amakuru y'ibanze ku iduka ryawe",
+    fields: [
+      { key: "shopName", label: "Izina ry'iduka", type: "text", required: true, placeholder: "Urugero: Quincaillerie Uwase" },
+      { key: "district", label: "Akarere (District)", type: "select", required: true,
+        options: ["Kigali — Gasabo","Kigali — Kicukiro","Kigali — Nyarugenge","Musanze","Huye","Rubavu","Muhanga","Rwamagana","Nyagatare","Kayonza","Gicumbi","Other"] },
+      { key: "sector", label: "Umurenge (Sector)", type: "text", required: true },
+      { key: "cell", label: "Akagari (Cell)", type: "text", required: false },
+      { key: "ownerName", label: "Nyir'iduka — amazina", type: "text", required: true },
+      { key: "ownerPhone", label: "Nyir'iduka — telefone", type: "tel", required: true, placeholder: "07XX XXX XXX" },
+      { key: "yearOpened", label: "Umwaka iduka ryatangiye", type: "number", required: false, min: 1950, max: 2100 },
+      { key: "shopType", label: "Ubwoko bw'iduka", type: "select", required: true,
+        options: ["Quincaillerie","Hardware","Electronics","Construction materials","Other"] },
+      { key: "employeeCount", label: "Abakozi bangahe?", type: "radio", required: true,
+        options: ["0","1-2","3-5","6-10",">10"] },
+      { key: "hasElectricity", label: "Iduka rifite amashanyarazi?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "hasInternet", label: "Iduka rifite internet?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section2", title: "Ibicuruzwa", subtitle: "Ubwoko n'ingano y'ibicuruzwa",
+    fields: [
+      { key: "categories", label: "Ubwoko bw'ibicuruzwa (hitamo byinshi)", type: "checkbox", required: true,
+        options: ["Cement","Amabati","Fer","Imisumari","Paint","Plumbing","Electrical","Tools","Wire","Sand","Gravel","Roofing","Tiles","Wood","Glass","Ibindi"] },
+      { key: "skuCount", label: "Ibicuruzwa bingana iki?", type: "radio", required: true,
+        options: ["<50","50-200","200-1000",">1000"] },
+      { key: "hasVariants", label: "Ibicuruzwa bifite variants (size, weight)?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "differentUnits", label: "Bigurwa n'uburyo butandukanye n'ubwo bigurishwa?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section3", title: "Product Data Structure", subtitle: "Ingero z'ibicuruzwa 3 by'ibanze",
+    fields: [
+      { key: "samplesIntro", label: "", type: "note",
+        note: "Zuza ingero 3 z'ibicuruzwa by'ibanze. Buri sample ifite amakuru ari mu mwanya ukurikira." },
+      { key: "_samples", label: "Ingero z'ibicuruzwa", type: "samples" },
+    ],
+  },
+  {
+    id: "section4", title: "Opening Stock", subtitle: "Uko stock ibarwa ubu",
+    fields: [
+      { key: "knowsExactStock", label: "Uzi umubare nyawo w'ibicuruzwa?", type: "radio", required: true,
+        options: ["exact","approximate","no idea"] },
+      { key: "countFrequency", label: "Hari igihe ubara stock?", type: "radio", required: true,
+        options: ["daily","weekly","monthly","never"] },
+      { key: "countedBy", label: "Ninde ubara?", type: "text", required: false },
+      { key: "mismatchAction", label: "Niba umubare utandukanye n'ibyo wari uzi, ubigenza gute?", type: "textarea", required: false },
+      { key: "inTransit", label: "Hari ibicuruzwa byatumijwe bitarageraho?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section5", title: "Stock Movement", subtitle: "Uko stock igenda mu iduka",
+    fields: [
+      { key: "receiveRecordedBy", label: "Iyo stock nshya igereye, ninde uyandika?", type: "text", required: true },
+      { key: "saleRecordedBy", label: "Iyo ugurishije, ninde wandika?", type: "text", required: true },
+      { key: "damageRecordedHow", label: "Ibyangijwe cyangwa ibyarangiye, babyandikwa gute?", type: "textarea", required: false },
+      { key: "transferRecordedHow", label: "Ibyimuwe mu iduka bijya mu bubiko, babyandikwa gute?", type: "textarea", required: false },
+      { key: "movementTiming", label: "Ibi bikorwa ryari?", type: "radio", required: true,
+        options: ["real-time","end of day","not recorded"] },
+    ],
+  },
+  {
+    id: "section6", title: "Purchase Workflow", subtitle: "Uko mugura ibicuruzwa",
+    fields: [
+      { key: "decidesPurchase", label: "Ninde uhitamo ibyo kugura?", type: "text", required: true },
+      { key: "orderMethods", label: "Mutumiza gute? (hitamo byinshi)", type: "checkbox", required: true,
+        options: ["phone","WhatsApp","in person","market","other"] },
+      { key: "supplierPaymentTerms", label: "Mwishyura supplier ryari?", type: "radio", required: true,
+        options: ["cash on delivery","30 days","60 days","other"] },
+      { key: "hasPurchaseOrder", label: "Hari purchase order / invoice?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "supplierReturns", label: "Hari ibyo musubiza supplier?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "wrongDeliveryAction", label: "Niba supplier yazanye ibitari byo, mukora iki?", type: "textarea", required: false },
+    ],
+  },
+  {
+    id: "section7", title: "Sales Workflow", subtitle: "Uko mugurisha",
+    fields: [
+      { key: "seller", label: "Ninde ugurisha?", type: "text", required: true },
+      { key: "receiptPolicy", label: "Receipt itangwa kuri buri mukiriya?", type: "radio", required: true,
+        options: ["always","sometimes","never"] },
+      { key: "saleRecordedHow", label: "Kugurisha kwandikwa gute?", type: "textarea", required: false },
+      { key: "discountPolicy", label: "Discounts zemewe?", type: "radio", required: true,
+        options: ["yes by owner","yes by any employee","no"] },
+      { key: "creditSalesAllowed", label: "Credit sales zemewe?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "shortCashAction", label: "Niba umukiriya adafite amafaranga ahagije, mukora iki?", type: "textarea", required: false },
+    ],
+  },
+  {
+    id: "section8", title: "Pricing & Profit", subtitle: "Uko ibiciro bishyirwaho n'inyungu",
+    fields: [
+      { key: "pricingMethod", label: "Igiciro cyo kugurisha gishyirwaho gute?", type: "radio", required: true,
+        options: ["cost + markup","market rate","negotiation","other"] },
+      { key: "standardMarkup", label: "Markup isanzwe (%)", type: "number", required: false, min: 0, max: 500 },
+      { key: "retailWholesaleDiff", label: "Ibiciro bitandukanye retail vs wholesale?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "cashCreditDiff", label: "Ibiciro bitandukanye cash vs credit?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "trackProfitPerSale", label: "Mukurikirana inyungu kuri buri gurisha?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "trackProfitPerProduct", label: "Mukurikirana inyungu kuri buri gicuruzwa?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "monthlyProfitTarget", label: "Mufite intego y'inyungu buri kwezi?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section9", title: "Debt Ledger (Imyenda)", subtitle: "Uko imyenda ikurikiranwa",
+    fields: [
+      { key: "creditTrackingHow", label: "Credit sales zikurikiranwa gute?", type: "textarea", required: false },
+      { key: "supplierDebtTrackingHow", label: "Imyenda ya supplier ikurikiranwa gute?", type: "textarea", required: false },
+      { key: "hasAgingReport", label: "Hari aging report 30/60/90?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "nonPaymentAction", label: "Niba umukiriya atishyuye, mukora iki?", type: "textarea", required: false },
+      { key: "lateInterest", label: "Hari inyungu ku kwishyura nabi?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "partialPaymentsAllowed", label: "Partial payments zemewe?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section10", title: "Cash Reconciliation", subtitle: "Uko amafaranga abarwa",
+    fields: [
+      { key: "expectedTillEndOfDay", label: "Amafaranga agomba kuba mu kigega ku iherezo ry'umunsi", type: "number", required: false },
+      { key: "cashCountedBy", label: "Ninde ubara amafaranga?", type: "text", required: true },
+      { key: "hasDailyCashReport", label: "Hari daily cash report?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "cashShortAction", label: "Niba amafaranga abuze, mukora iki?", type: "textarea", required: false },
+      { key: "cashOverAction", label: "Niba amafaranga yiyongereye, mukora iki?", type: "textarea", required: false },
+      { key: "bankDepositFreq", label: "Amafaranga ajyanwa kuri banki?", type: "radio", required: true,
+        options: ["daily","weekly","monthly","never"] },
+      { key: "momoReconciled", label: "Mobile money transactions zirabazwa?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section11", title: "Returns & Damages", subtitle: "Ibyagarutse n'ibyangijwe",
+    fields: [
+      { key: "customerReturnsAllowed", label: "Customer returns zemewe?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "returnHandling", label: "Ibyagarutse bikorwa gute?", type: "radio", required: false,
+        options: ["refund","exchange","credit note"] },
+      { key: "damagedRecordedHow", label: "Ibyangijwe byandikwa gute?", type: "textarea", required: false },
+      { key: "expiredHandling", label: "Ibyarangiye bikorwa gute?", type: "textarea", required: false },
+      { key: "writeOffApprovedBy", label: "Write-offs zemewe na ninde?", type: "text", required: false },
+    ],
+  },
+  {
+    id: "section12", title: "Employees & Permissions", subtitle: "Abakozi n'uburenganzira bwabo",
+    fields: [
+      { key: "_employees", label: "Urutonde rw'abakozi", type: "employees" },
+      { key: "priceChangeApprovedBy", label: "Ninde wemera guhindura ibiciro?", type: "text", required: false },
+      { key: "refundApprovedBy", label: "Ninde wemera refunds?", type: "text", required: false },
+      { key: "hasShiftHandover", label: "Hari shift handover report?", type: "radio", required: true, options: ["yego","oya"] },
+    ],
+  },
+  {
+    id: "section13", title: "Current Tools & Pain Points", subtitle: "Ibikoresho n'ibibazo ubu",
+    fields: [
+      { key: "currentTools", label: "Mukoresha iki ubu? (hitamo byinshi)", type: "checkbox", required: true,
+        options: ["paper notebook","WhatsApp","Excel","nothing","other"] },
+      { key: "topProblem", label: "Ikibazo #1 ubu", type: "textarea", required: true },
+      { key: "lastFinancialLoss", label: "Igihombo cya nyuma", type: "textarea", required: false },
+      { key: "topThingToFix", label: "Ikintu #1 mushaka gukemura", type: "textarea", required: true },
+    ],
+  },
+  {
+    id: "section14", title: "Budget, Timeline, Tech Readiness", subtitle: "Ingengo y'imari n'igihe",
+    fields: [
+      { key: "hasSmartphone", label: "Mufite smartphone?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "hasComputer", label: "Mufite computer / laptop?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "internetQuality", label: "Internet ni gute?", type: "radio", required: true,
+        options: ["good","fair","poor","none"] },
+      { key: "ownerTechSavvy", label: "Nyir'iduka azi gukoresha smartphone?", type: "radio", required: true,
+        options: ["comfortable","some","not at all"] },
+      { key: "budget", label: "Budget (RWF)", type: "radio", required: true,
+        options: ["0","<100k","100k-500k","500k-2M","2M-5M",">5M"] },
+      { key: "timeline", label: "Timeline", type: "radio", required: true,
+        options: ["<2 weeks","1 month","2-3 months","6 months","no rush"] },
+      { key: "wantsMomoBankIntegration", label: "Mwishaka gukorana na MoMo / Bank?", type: "radio", required: true, options: ["yego","oya"] },
+      { key: "anythingElse", label: "Ikindi mwishaka kutubwira", type: "textarea", required: false },
+    ],
+  },
+];
+
+/* ============================================================
+   5. FIELD RENDERERS
+   ============================================================ */
+function el(tag, attrs = {}, children = []) {
+  const e = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k === "html") e.innerHTML = v;
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k, v);
+  });
+  (Array.isArray(children) ? children : [children]).forEach(c => {
+    if (c == null) return;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+
+const inputClass = "w-full bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm text-maye-text-base focus:outline-none focus:ring-2 focus:ring-maye-accent focus:border-maye-primary-400 transition";
+const labelClass = "block text-sm font-semibold text-maye-text-strong mb-1.5";
+const radioWrap = "flex flex-wrap gap-2";
+const radioPill = (active) =>
+  `cursor-pointer select-none px-3.5 py-2 rounded-maye-sm border text-sm font-medium transition ` +
+  (active
+    ? "bg-maye-primary text-white border-maye-primary shadow-maye-sm"
+    : "bg-white text-maye-text-base border-maye-border hover:border-maye-primary-400");
+
+function renderField(field, value, onChange) {
+  const wrap = el("div");
+
+  if (field.type === "note") {
+    wrap.appendChild(el("p", { class: "text-sm text-maye-text-muted bg-maye-muted border border-maye-border rounded-maye-md px-4 py-3", text: "📝 " + field.note }));
+    return wrap;
+  }
+
+  const labelText = field.label + (field.required ? " *" : "");
+  if (field.label) wrap.appendChild(el("label", { class: labelClass, text: labelText }));
+
+  if (field.type === "text" || field.type === "tel" || field.type === "number") {
+    const inp = el("input", { type: field.type, class: inputClass, placeholder: field.placeholder || "", value: value ?? "" });
+    if (field.min !== undefined) inp.min = field.min;
+    if (field.max !== undefined) inp.max = field.max;
+    inp.addEventListener("input", () => onChange(field.type === "number" && inp.value !== "" ? Number(inp.value) : inp.value));
+    wrap.appendChild(inp);
+  } else if (field.type === "textarea") {
+    const ta = el("textarea", { class: inputClass, rows: 3, placeholder: field.placeholder || "" });
+    ta.value = value ?? "";
+    ta.addEventListener("input", () => onChange(ta.value));
+    wrap.appendChild(ta);
+  } else if (field.type === "select") {
+    const sel = el("select", { class: inputClass });
+    sel.appendChild(el("option", { value: "", text: "— Hitamo —" }));
+    field.options.forEach(opt => {
+      const o = el("option", { value: opt, text: opt });
+      if (value === opt) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", () => onChange(sel.value));
+    wrap.appendChild(sel);
+  } else if (field.type === "radio") {
+    const container = el("div", { class: radioWrap });
+    field.options.forEach(opt => {
+      const active = value === opt;
+      const pill = el("button", {
+        type: "button", class: radioPill(active), text: opt,
+        onclick: () => { onChange(opt); renderSection(); },
+      });
+      container.appendChild(pill);
+    });
+    wrap.appendChild(container);
+  } else if (field.type === "checkbox") {
+    const container = el("div", { class: radioWrap });
+    const arr = Array.isArray(value) ? [...value] : [];
+    field.options.forEach(opt => {
+      const active = arr.includes(opt);
+      const pill = el("button", {
+        type: "button", class: radioPill(active), text: opt,
+        onclick: () => {
+          const i = arr.indexOf(opt);
+          if (i >= 0) arr.splice(i, 1); else arr.push(opt);
+          onChange([...arr]);
+          renderSection();
+        },
+      });
+      container.appendChild(pill);
+    });
+    wrap.appendChild(container);
+  } else if (field.type === "samples") {
+    wrap.appendChild(renderSamplesEditor());
+  } else if (field.type === "employees") {
+    wrap.appendChild(renderEmployeesEditor());
+  }
+
+  return wrap;
+}
+
+function renderSamplesEditor() {
+  const wrap = el("div", { class: "space-y-3" });
+  if (state.samples.length === 0) state.samples.push(newSample());
+
+  state.samples.forEach((s, idx) => {
+    const card = el("div", { class: "bg-maye-muted/70 border border-maye-border rounded-maye-md p-4 space-y-3" });
+    const header = el("div", { class: "flex items-center justify-between" });
+    header.appendChild(el("div", { class: "text-sm font-bold text-maye-primary-600", text: `📦 Sample #${idx + 1}` }));
+    if (state.samples.length > 1) {
+      header.appendChild(el("button", {
+        type: "button", class: "text-xs font-semibold text-maye-danger hover:underline", text: "🗑 Kuraho",
+        onclick: () => { state.samples.splice(idx, 1); saveDraft(); renderSection(); },
+      }));
+    }
+    card.appendChild(header);
+
+    const grid = el("div", { class: "grid grid-cols-1 sm:grid-cols-2 gap-3" });
+    const fields = [
+      { key: "name", label: "Izina ry'agace", type: "text" },
+      { key: "size", label: "Size / Variant", type: "text" },
+      { key: "purchaseUnit", label: "Purchase Unit", type: "text", placeholder: "Carton, Sack, Bundle, Kg" },
+      { key: "sellingUnit", label: "Selling Unit", type: "text", placeholder: "Kg, Piece, Meter" },
+      { key: "conversionFactor", label: "Conversion Factor", type: "number", placeholder: "1 carton = ? kg" },
+      { key: "purchasePrice", label: "Purchase Price", type: "number" },
+      { key: "purchaseCurrency", label: "Currency (Purchase)", type: "select", options: ["RWF","AED"] },
+      { key: "sellingPrice", label: "Selling Price", type: "number" },
+      { key: "sellingCurrency", label: "Currency (Selling)", type: "select", options: ["RWF","AED"] },
+      { key: "currentStock", label: "Current Stock", type: "number" },
+      { key: "supplierName", label: "Supplier Name", type: "text" },
+    ];
+    fields.forEach(f => {
+      const fw = el("div");
+      fw.appendChild(el("label", { class: "block text-xs font-semibold text-maye-text-muted mb-1", text: f.label }));
+      if (f.type === "select") {
+        const sel = el("select", { class: inputClass });
+        f.options.forEach(o => {
+          const opt = el("option", { value: o, text: o });
+          if ((s[f.key] || "RWF") === o) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener("change", () => { s[f.key] = sel.value; saveDraft(); });
+        fw.appendChild(sel);
+      } else {
+        const inp = el("input", { type: f.type, class: inputClass, placeholder: f.placeholder || "", value: s[f.key] ?? "" });
+        inp.addEventListener("input", () => {
+          s[f.key] = f.type === "number" && inp.value !== "" ? Number(inp.value) : inp.value;
+          saveDraft();
+        });
+        fw.appendChild(inp);
+      }
+      grid.appendChild(fw);
+    });
+    card.appendChild(grid);
+
+    const yesNo = el("div", { class: "flex flex-wrap gap-4 pt-1" });
+    ["expires", "damagesEasily"].forEach(k => {
+      const label = k === "expires" ? "Irimo gupfa?" : "Ryangirika vuba?";
+      const row = el("div", { class: "flex items-center gap-2" });
+      row.appendChild(el("span", { class: "text-xs font-semibold text-maye-text-muted", text: label }));
+      ["yego","oya"].forEach(v => {
+        const active = (s[k] ? "yego" : "oya") === v;
+        row.appendChild(el("button", {
+          type: "button", class: radioPill(active) + " !px-2.5 !py-1 !text-xs", text: v,
+          onclick: () => { s[k] = (v === "yego"); saveDraft(); renderSection(); },
+        }));
+      });
+      yesNo.appendChild(row);
+    });
+    card.appendChild(yesNo);
+
+    const notesWrap = el("div");
+    notesWrap.appendChild(el("label", { class: "block text-xs font-semibold text-maye-text-muted mb-1", text: "Notes" }));
+    const notes = el("textarea", { class: inputClass, rows: 2 });
+    notes.value = s.notes || "";
+    notes.addEventListener("input", () => { s.notes = notes.value; saveDraft(); });
+    notesWrap.appendChild(notes);
+    card.appendChild(notesWrap);
+
+    wrap.appendChild(card);
+  });
+
+  if (state.samples.length < 5) {
+    wrap.appendChild(el("button", {
+      type: "button",
+      class: "w-full px-4 py-2.5 rounded-maye-md border-2 border-dashed border-maye-border-strong text-sm font-semibold text-maye-primary-400 hover:bg-maye-muted transition",
+      text: "+ Ongeraho sample",
+      onclick: () => { state.samples.push(newSample()); saveDraft(); renderSection(); },
+    }));
+  }
+  return wrap;
+}
+
+function newSample() {
+  return {
+    sampleId: "SMP-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
+    name: "", size: "", purchaseUnit: "", sellingUnit: "",
+    conversionFactor: null, purchasePrice: null, purchaseCurrency: "RWF",
+    sellingPrice: null, sellingCurrency: "RWF", currentStock: null,
+    supplierName: "", expires: false, damagesEasily: false, notes: "",
+  };
+}
+
+function renderEmployeesEditor() {
+  const wrap = el("div", { class: "space-y-2" });
+  const current = state.answers["section12"]?._employees || [];
+  const rows = current.length ? current : [{ name: "", role: "" }];
+  rows.forEach((emp, idx) => {
+    const row = el("div", { class: "grid grid-cols-1 sm:grid-cols-2 gap-2" });
+    const nameI = el("input", { type: "text", class: inputClass, placeholder: "Izina", value: emp.name || "" });
+    const roleI = el("input", { type: "text", class: inputClass, placeholder: "Role (cashier, stock, etc.)", value: emp.role || "" });
+    const sync = () => {
+      const arr = (state.answers["section12"]?._employees || []).slice();
+      while (arr.length <= idx) arr.push({ name: "", role: "" });
+      arr[idx] = { name: nameI.value, role: roleI.value };
+      state.answers["section12"] = state.answers["section12"] || {};
+      state.answers["section12"]._employees = arr;
+      saveDraft();
+    };
+    nameI.addEventListener("input", sync);
+    roleI.addEventListener("input", sync);
+    row.appendChild(nameI);
+    row.appendChild(roleI);
+    wrap.appendChild(row);
+  });
+  if (rows.length < 5) {
+    wrap.appendChild(el("button", {
+      type: "button",
+      class: "text-sm font-semibold text-maye-primary-400 hover:text-maye-primary-600 transition",
+      text: "+ Ongeraho umukozi",
+      onclick: () => {
+        state.answers["section12"] = state.answers["section12"] || {};
+        const arr = (state.answers["section12"]._employees || []).slice();
+        arr.push({ name: "", role: "" });
+        state.answers["section12"]._employees = arr;
+        saveDraft();
+        renderSection();
+      },
+    }));
+  }
+  return wrap;
+}
+
+/* ============================================================
+   6. SECTION RENDER
+   ============================================================ */
+function renderSection() {
+  const sec = SECTIONS[state.currentSection];
+  const secNum = state.currentSection + 1;
+  document.getElementById("sectionNum").textContent = secNum;
+  const pct = Math.round((secNum / TOTAL_SECTIONS) * 100);
+  document.getElementById("sectionPercent").textContent = pct + "%";
+  document.getElementById("progressBar").style.width = pct + "%";
+  document.getElementById("sectionTitle").textContent = sec.title;
+  document.getElementById("sectionSubtitle").textContent = sec.subtitle || "";
+
+  const body = document.getElementById("sectionBody");
+  body.innerHTML = "";
+
+  const answers = state.answers[sec.id] || {};
+
+  sec.fields.forEach(field => {
+    if (field.key === "_samples") { body.appendChild(renderField(field, null, () => {})); return; }
+    if (field.key === "_employees") { body.appendChild(renderField(field, null, () => {})); return; }
+    const value = answers[field.key];
+    const onChange = (v) => {
+      state.answers[sec.id] = state.answers[sec.id] || {};
+      state.answers[sec.id][field.key] = v;
+      saveDraft();
+    };
+    body.appendChild(renderField(field, value, onChange));
+  });
+
+  document.getElementById("observationInput").value = state.observations[sec.id] || "";
+  document.getElementById("btnPrevSection").disabled = state.currentSection === 0;
+  document.getElementById("btnNextSection").textContent =
+    state.currentSection === TOTAL_SECTIONS - 1 ? "Reba ibisubizo →" : "Komeza →";
+}
+
+document.getElementById("observationInput").addEventListener("input", (e) => {
+  const sec = SECTIONS[state.currentSection];
+  state.observations[sec.id] = e.target.value;
+  saveDraft();
+});
+
+/* ============================================================
+   7. VALIDATION
+   ============================================================ */
+function validateSection(idx) {
+  const sec = SECTIONS[idx];
+  const answers = state.answers[sec.id] || {};
+  const missing = [];
+  sec.fields.forEach(f => {
+    if (f.required && (f.type !== "samples" && f.type !== "employees")) {
+      const v = answers[f.key];
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0)) {
+        missing.push(f.label);
+      }
+    }
+  });
+  if (sec.id === "section3") {
+    const valid = state.samples.filter(s => s.name && s.purchaseUnit && s.sellingUnit);
+    if (valid.length < 1) missing.push("Sample product imwe byibuze (izina + units)");
+  }
+  return missing;
+}
+
+/* ============================================================
+   8. DRAFT PERSISTENCE
+   ============================================================ */
+const DRAFT_KEY = "MAYE_SIAP_DRAFT";
+const DB_NAME = "maye_siap_db";
+const DB_STORE = "drafts";
+
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains(DB_STORE)) d.createObjectStore(DB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, val) {
+  try {
+    const d = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(DB_STORE, "readwrite");
+      tx.objectStore(DB_STORE).put(val, key);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch { return false; }
+}
+async function idbGet(key) {
+  try {
+    const d = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(DB_STORE, "readonly");
+      const r = tx.objectStore(DB_STORE).get(key);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  } catch { return null; }
+}
+async function idbDel(key) {
+  try {
+    const d = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(DB_STORE, "readwrite");
+      tx.objectStore(DB_STORE).delete(key);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch { return false; }
+}
+function saveDraft() {
+  idbSet(DRAFT_KEY, {
+    currentSection: state.currentSection,
+    answers: state.answers,
+    observations: state.observations,
+    samples: state.samples,
+    savedAt: Date.now(),
+  });
+}
+async function loadDraft() { return await idbGet(DRAFT_KEY); }
+async function clearDraft() { await idbDel(DRAFT_KEY); }
+
+/* ============================================================
+   9. SUBMIT / SYNC
+   ============================================================ */
+const PENDING_KEY = "MAYE_SIAP_PENDING";
+
+async function queuePending(payload) {
+  let q = (await idbGet(PENDING_KEY)) || [];
+  q.push(payload);
+  await idbSet(PENDING_KEY, q);
+}
+
+async function syncPending() {
+  if (!state.online || !state.uid) return;
+  let q = (await idbGet(PENDING_KEY)) || [];
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    try { await writeResponse(item); toast("Draft yabitswe kuri server", "success"); }
+    catch { remaining.push(item); }
+  }
+  await idbSet(PENDING_KEY, remaining);
+}
+
+async function writeResponse(payload) {
+  const newRef = push(ref(db, "interviewResponses"));
+  const responseId = "INT-" + newRef.key.slice(-5).toUpperCase();
+  const full = {
+    meta: {
+      responseId, schemaVersion: SCHEMA_VERSION,
+      createdAt: Date.now(), updatedAt: Date.now(),
+      submittedBy: state.uid || "anonymous",
+      interviewDate: new Date().toISOString().slice(0, 10),
+      interviewer: "Steven IRADUKUNDA",
+      appVersion: APP_VERSION,
+      status: "new", approvedByDeveloper: false, approvedAt: null,
+    },
+    shopProfile: payload.answers["section1"] || {},
+    answers: payload.answers,
+    observations: payload.observations,
+    samples: payload.samples || [],
+    developerAnalysis: null,
+    auditTrail: [{
+      actorUid: state.uid || "anonymous", action: "created",
+      timestamp: Date.now(), details: "Response submitted via interview form",
+    }],
+  };
+  await set(newRef, full);
+  return responseId;
+}
+
+async function submitInterview() {
+  for (let i = 0; i < SECTIONS.length; i++) {
+    const missing = validateSection(i);
+    if (missing.length) {
+      toast("Bura ibisubizo: " + missing.slice(0, 2).join(", "), "error");
+      state.currentSection = i;
+      showScreen("screenInterview");
+      renderSection();
+      return;
+    }
+  }
+  const payload = { answers: state.answers, observations: state.observations, samples: state.samples };
+  const btn = document.getElementById("btnSubmit");
+  btn.disabled = true;
+  btn.textContent = "⏳ Turohereza...";
+  try {
+    if (state.online && state.uid) {
+      const responseId = await writeResponse(payload);
+      await clearDraft();
+      showConfirmation(responseId, false);
+    } else {
+      await queuePending(payload);
+      await clearDraft();
+      showConfirmation("INT-PENDING", true);
+    }
+  } catch (err) {
+    console.error(err);
+    await queuePending(payload);
+    await clearDraft();
+    showConfirmation("INT-PENDING", true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✓ Ohereza ibisubizo";
+  }
+}
+
+function showConfirmation(refId, pending) {
+  document.getElementById("confirmationRef").textContent = refId;
+  const note = document.getElementById("syncNote");
+  if (pending) {
+    note.textContent = "⚠ Ibisubizo byabitswe muri telefone yawe. Bizoherezwa iyo internet igarutse.";
+    note.classList.remove("hidden");
+  } else note.classList.add("hidden");
+  showScreen("screenConfirmation");
+}
+
+/* ============================================================
+   10. REVIEW
+   ============================================================ */
+function renderReview() {
+  const body = document.getElementById("reviewBody");
+  body.innerHTML = "";
+  SECTIONS.forEach((sec, idx) => {
+    const answers = state.answers[sec.id] || {};
+    const obs = state.observations[sec.id] || "";
+    const card = el("div", { class: "bg-maye-surface border border-maye-border rounded-maye-md p-4" });
+    const header = el("div", { class: "flex items-center justify-between gap-3 mb-2" });
+    header.appendChild(el("div", { class: "font-bold text-maye-text-strong", text: `${idx + 1}. ${sec.title}` }));
+    header.appendChild(el("button", {
+      type: "button", class: "text-xs font-semibold text-maye-primary-400 hover:text-maye-primary-600", text: "✏️ Hindura",
+      onclick: () => { state.currentSection = idx; showScreen("screenInterview"); renderSection(); },
+    }));
+    card.appendChild(header);
+
+    const list = el("div", { class: "space-y-1.5 text-sm" });
+    sec.fields.forEach(f => {
+      if (!f.label || f.type === "samples" || f.type === "employees" || f.type === "note") return;
+      const v = answers[f.key];
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) return;
+      const row = el("div", { class: "flex flex-col sm:flex-row sm:gap-2" });
+      row.appendChild(el("span", { class: "text-maye-text-muted font-semibold min-w-[180px]", text: f.label + ":" }));
+      row.appendChild(el("span", { class: "text-maye-text-base", text: Array.isArray(v) ? v.join(", ") : String(v) }));
+      list.appendChild(row);
+    });
+    if (sec.id === "section3" && state.samples.length) {
+      const validSamples = state.samples.filter(s => s.name);
+      if (validSamples.length) {
+        const row = el("div", { class: "flex flex-col sm:flex-row sm:gap-2" });
+        row.appendChild(el("span", { class: "text-maye-text-muted font-semibold min-w-[180px]", text: "Samples:" }));
+        row.appendChild(el("span", { class: "text-maye-text-base", text: validSamples.map(s => s.name).join(", ") }));
+        list.appendChild(row);
+      }
+    }
+    if (obs) {
+      const obsRow = el("div", { class: "mt-2 bg-maye-muted border border-maye-border rounded-maye-sm px-3 py-2 text-sm" });
+      obsRow.appendChild(el("div", { class: "text-xs font-bold text-maye-primary-600 uppercase tracking-wide mb-0.5", text: "👁 Observation" }));
+      obsRow.appendChild(el("div", { class: "text-maye-text-base", text: obs }));
+      list.appendChild(obsRow);
+    }
+    if (!list.children.length) list.appendChild(el("div", { class: "text-maye-text-muted italic text-sm", text: "Nta bisubizo" }));
+    card.appendChild(list);
+    body.appendChild(card);
+  });
+}
+
+/* ============================================================
+   11. BLUEPRINT GENERATOR
+   ============================================================ */
+function generateBlueprint(response) {
+  const a = response.answers || {};
+  const s1 = a.section1 || {}, s2 = a.section2 || {}, s8 = a.section8 || {},
+    s9 = a.section9 || {}, s12 = a.section12 || {}, s14 = a.section14 || {};
+  const hasVariants = s2.hasVariants === "yego";
+  const diffUnits = s2.differentUnits === "yego";
+  const creditSales = a.section7?.creditSalesAllowed === "yego";
+  const aging = s9.hasAgingReport === "yego";
+
+  const modules = [
+    { moduleId: "products", priority: "high",
+      rationale: hasVariants || diffUnits ? "Products have variants and/or different purchase/selling units" : "Core product catalog needed",
+      entities: ["Product","ProductVariant","UnitConversion"], workflows: ["purchase","sale","return"],
+      estimatedComplexity: hasVariants || diffUnits ? "medium" : "low" },
+    { moduleId: "stock", priority: "high", rationale: "Stock movement tracking required; opening stock must be counted",
+      entities: ["Stock","StockMovement","OpeningStock"], workflows: ["receive","issue","transfer","damage"], estimatedComplexity: "medium" },
+    { moduleId: "sales", priority: "high", rationale: creditSales ? "Credit sales common; receipts inconsistent" : "Sales tracking with receipts",
+      entities: ["Sale","SaleLine","Payment","Credit"], workflows: ["quote","invoice","payment","refund"],
+      estimatedComplexity: creditSales ? "medium" : "low" },
+    { moduleId: "purchases", priority: "medium", rationale: "Supplier orders currently informal",
+      entities: ["PurchaseOrder","GoodsReceipt","SupplierInvoice"], workflows: ["order","receive","return_to_supplier"], estimatedComplexity: "medium" },
+    { moduleId: "debt_ledger", priority: creditSales ? "high" : "low", rationale: aging ? "Aging report exists but manual" : "Aging tracked manually; not reliable",
+      entities: ["CustomerLedger","SupplierLedger","AgingBucket"], workflows: ["credit_sale","partial_payment","write_off"],
+      estimatedComplexity: creditSales ? "high" : "low" },
+    { moduleId: "cash_reconciliation", priority: "high", rationale: "Daily cash counting essential for loss prevention",
+      entities: ["CashSession","CashCount","Discrepancy"], workflows: ["open","count","reconcile","close"], estimatedComplexity: "medium" },
+    { moduleId: "employees", priority: s1.employeeCount === "0" ? "low" : "medium",
+      rationale: s1.employeeCount === "0" ? "Owner-only shop; minimal role separation" : `${s1.employeeCount} employees; role separation needed`,
+      entities: ["Employee","Shift","Permission"], workflows: ["clock_in","sale","shift_close"],
+      estimatedComplexity: s1.employeeCount === "0" ? "low" : "medium" },
+    { moduleId: "reports", priority: "high", rationale: "Owner needs visibility into profit and stock",
+      entities: ["DailyReport","StockReport","ProfitReport","AgingReport"], workflows: ["generate","export"], estimatedComplexity: "low" },
+  ];
+
+  const sampleTransactions = (response.samples || []).filter(s => s.name).map(s => {
+    const qty = s.conversionFactor || 1;
+    const revenue = (s.sellingPrice || 0) * qty;
+    const cost = (s.purchasePrice || 0) * qty;
+    const profit = revenue - cost;
+    return {
+      description: `Sale of ${qty}${s.sellingUnit || "unit"} ${s.name}`,
+      product: s.name, quantity: qty, unit: s.sellingUnit,
+      purchaseUnitPrice: s.purchasePrice, sellingUnitPrice: s.sellingPrice,
+      totalRevenue: revenue, totalCost: cost, profit,
+      profitMargin: revenue > 0 ? Math.round((profit / revenue) * 100) : 0,
+    };
+  });
+
+  return {
+    blueprintId: "BP-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
+    generatedAt: Date.now(),
+    sourceResponseIds: [response.meta?.responseId || "UNKNOWN"],
+    shopProfile: s1,
+    detectedModules: modules,
+    detectedEntities: [
+      { name: "Product", fields: ["id","name","category","purchaseUnit","sellingUnit","conversionFactor"] },
+      { name: "ProductVariant", fields: ["productId","size","weight","color"] },
+      { name: "Stock", fields: ["productId","variantId","quantity","warehouseId"] },
+      { name: "StockMovement", fields: ["id","type","productId","quantity","reason","createdAt"] },
+      { name: "Customer", fields: ["id","name","phone","creditLimit","balance"] },
+      { name: "Supplier", fields: ["id","name","phone","balance"] },
+      { name: "Sale", fields: ["id","customerId","total","paid","status","createdAt"] },
+      { name: "Purchase", fields: ["id","supplierId","total","status","createdAt"] },
+      { name: "Payment", fields: ["id","saleId","amount","method","createdAt"] },
+      { name: "CashSession", fields: ["id","openedAt","closedAt","expected","counted"] },
+    ],
+    detectedWorkflows: [
+      "purchase_order → goods_receipt → stock_increase",
+      "sale → invoice → payment → stock_decrease",
+      "return → credit_note → stock_increase",
+      "damage → write_off → stock_decrease",
+      "cash_open → daily_sales → cash_close",
+      "credit_sale → aging → follow_up",
+    ],
+    businessRules: [
+      `Selling price = purchase price × (1 + markup%); markup default = ${s8.standardMarkup || 20}%`,
+      s8.retailWholesaleDiff === "yego" ? "Wholesale prices differ from retail" : "Uniform retail pricing",
+      creditSales ? "Credit sales allowed with customer credit limit" : "No credit sales",
+      "Aging buckets: 0-30, 31-60, 61-90, 90+ days",
+      s12.priceChangeApprovedBy ? `Price change requires approval from: ${s12.priceChangeApprovedBy}` : "Price change approval not specified",
+    ],
+    sampleTransactions,
+    techRecommendations: {
+      frontend: "HTML5 + CSS3 + Vanilla JS (no framework)",
+      backend: "Firebase Realtime Database + Anonymous Auth",
+      offline: "IndexedDB queue", pwa: "manifest embedded + sw.js",
+      hosting: "Netlify or Firebase Hosting",
+      blazeUpgrade: "Recommended if > 100 responses or custom claims needed",
+    },
+    acceptanceTests: [
+      "Can create a product with purchase unit carton and selling unit kg",
+      "Can sell 25 kg and stock decreases by 1 carton",
+      "Cash close shows expected vs counted and detects discrepancies",
+      "Aging report correctly buckets 30/60/90+ days",
+      "Credit sale blocked when credit limit exceeded",
+    ],
+    interviewSummary: {
+      shopName: s1.shopName || "Unknown", ownerName: s1.ownerName || "Unknown",
+      district: s1.district || "Unknown", shopType: s1.shopType || "Unknown",
+      employeeCount: s1.employeeCount || "Unknown",
+      budget: s14.budget || "Unknown", timeline: s14.timeline || "Unknown",
+      hasSmartphone: s14.hasSmartphone === "yego", internetQuality: s14.internetQuality || "unknown",
+    },
+  };
+}
+
+/* ============================================================
+   12. DASHBOARD
+   ============================================================ */
+async function loadResponses() {
+  const listEl = document.getElementById("responseList");
+  listEl.innerHTML = `
+    <div class="space-y-3">
+      <div class="skeleton h-20 w-full"></div>
+      <div class="skeleton h-20 w-full"></div>
+      <div class="skeleton h-20 w-full"></div>
+    </div>`;
+  try {
+    const q = query(ref(db, "interviewResponses"), orderByChild("meta/createdAt"), limitToLast(500));
+    const snap = await get(q);
+    if (!snap.exists()) {
+      state.responses = [];
+      renderStats();
+      listEl.innerHTML = `
+        <div class="text-center text-maye-text-muted py-12 text-sm">
+          <div class="text-5xl mb-3">📋</div>
+          <div class="font-bold text-maye-text-strong mb-1">Nta bisubizo biraboneka</div>
+          <div>Steven aratangira ikiganiro cya mbere.</div>
+        </div>`;
+      return;
+    }
+    const arr = [];
+    snap.forEach(child => {
+      const v = child.val();
+      arr.push({ _key: child.key, ...v });
+    });
+    arr.sort((a, b) => (b.meta?.createdAt || 0) - (a.meta?.createdAt || 0));
+    state.responses = arr;
+    renderStats();
+    renderResponseList();
+    populateDistrictFilter();
+  } catch (err) {
+    console.error(err);
+    listEl.innerHTML = `
+      <div class="text-center text-maye-danger py-10 text-sm">
+        <div class="text-4xl mb-2">⚠️</div>
+        <div class="font-bold mb-1">Ntibyakunze kuzamura ibisubizo</div>
+        <div>Reba ko UID yawe iri muri adminAllowList muri Firebase Console.</div>
+        <div class="mt-3"><button id="retryLoad" class="px-4 py-2 rounded-maye-md bg-maye-primary text-white text-sm font-bold">🔄 Retry</button></div>
+      </div>`;
+    document.getElementById("retryLoad")?.addEventListener("click", loadResponses);
+  }
+}
+
+function renderStats() {
+  const total = state.responses.length;
+  const newC = state.responses.filter(r => (r.meta?.status || "new") === "new").length;
+  const reviewed = state.responses.filter(r => r.meta?.status === "reviewed").length;
+  const ready = state.responses.filter(r => r.meta?.status === "blueprint_ready").length;
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statNew").textContent = newC;
+  document.getElementById("statReviewed").textContent = reviewed;
+  document.getElementById("statReady").textContent = ready;
+}
+
+function populateDistrictFilter() {
+  const sel = document.getElementById("fDistrict");
+  const current = sel.value;
+  const districts = new Set();
+  state.responses.forEach(r => {
+    const d = r.shopProfile?.district || r.answers?.section1?.district;
+    if (d) districts.add(d);
+  });
+  sel.innerHTML = `<option value="">Akarere kose</option>`;
+  [...districts].sort().forEach(d => {
+    const o = document.createElement("option");
+    o.value = d; o.textContent = d;
+    sel.appendChild(o);
+  });
+  sel.value = current;
+}
+
+function applyFilters(list) {
+  const search = document.getElementById("fSearch").value.trim().toLowerCase();
+  const district = document.getElementById("fDistrict").value;
+  const status = document.getElementById("fStatus").value;
+  const budget = document.getElementById("fBudget").value;
+  return list.filter(r => {
+    const s1 = r.shopProfile || r.answers?.section1 || {};
+    const s14 = r.answers?.section14 || {};
+    if (search) {
+      const hay = `${s1.shopName || ""} ${s1.ownerName || ""}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (district && s1.district !== district) return false;
+    if (status && (r.meta?.status || "new") !== status) return false;
+    if (budget && s14.budget !== budget) return false;
+    return true;
+  });
+}
+
+function renderResponseList() {
+  const listEl = document.getElementById("responseList");
+  const filtered = applyFilters(state.responses);
+  if (!filtered.length) {
+    listEl.innerHTML = `
+      <div class="text-center text-maye-text-muted py-10 text-sm">
+        <div class="text-4xl mb-2">🔍</div>
+        Nta bisubizo bihuye n'ibyo washakishije.
+      </div>`;
+    return;
+  }
+  listEl.innerHTML = "";
+  filtered.forEach(r => {
+    const s1 = r.shopProfile || r.answers?.section1 || {};
+    const meta = r.meta || {};
+    const statusColors = {
+      new: "bg-maye-info/10 text-maye-info border-maye-info/30",
+      reviewed: "bg-maye-warning/10 text-maye-warning border-maye-warning/30",
+      blueprint_ready: "bg-maye-success/10 text-maye-success border-maye-success/30",
+    };
+    const statusLabels = { new: "🆕 New", reviewed: "👁 Reviewed", blueprint_ready: "✅ Blueprint Ready" };
+    const card = el("div", {
+      class: "bg-white border border-maye-border rounded-maye-md p-4 hover:shadow-maye-md transition cursor-pointer",
+      onclick: () => openResponseDetail(r._key),
+    });
+    const top = el("div", { class: "flex items-start justify-between gap-3" });
+    const left = el("div", { class: "min-w-0" });
+    left.appendChild(el("div", { class: "font-bold text-maye-text-strong truncate", text: s1.shopName || "Izina ritazwi" }));
+    left.appendChild(el("div", { class: "text-xs text-maye-text-muted mt-0.5", text: `${s1.ownerName || "—"} • ${s1.district || "—"} • ${s1.shopType || "—"}` }));
+    left.appendChild(el("div", { class: "text-xs text-maye-text-muted mt-1 font-mono", text: meta.responseId || r._key }));
+    top.appendChild(left);
+
+    const badges = el("div", { class: "flex items-center gap-1 shrink-0" });
+    if (meta.approvedByDeveloper) badges.appendChild(el("span", { class: "text-xs font-bold px-2 py-1 rounded-full bg-maye-accent/20 text-maye-primary border border-maye-accent/40", text: "✓ Approved" }));
+    badges.appendChild(el("span", {
+      class: `text-xs font-bold px-2.5 py-1 rounded-full border ${statusColors[meta.status || "new"] || statusColors.new}`,
+      text: statusLabels[meta.status || "new"] || "New",
+    }));
+    top.appendChild(badges);
+    card.appendChild(top);
+
+    const bottom = el("div", { class: "mt-2 flex items-center gap-3 text-xs text-maye-text-muted flex-wrap" });
+    bottom.appendChild(el("span", { text: "📅 " + (meta.interviewDate || "—") }));
+    if (r.answers?.section14?.budget) bottom.appendChild(el("span", { text: "💰 " + r.answers.section14.budget }));
+    if (r.samples?.length) bottom.appendChild(el("span", { text: `📦 ${r.samples.length} samples` }));
+    if (meta.updatedAt && meta.updatedAt !== meta.createdAt) {
+      const date = new Date(meta.updatedAt).toLocaleDateString();
+      bottom.appendChild(el("span", { text: `✏️ ${date}` }));
+    }
+    card.appendChild(bottom);
+
+    listEl.appendChild(card);
+  });
+}
+
+document.getElementById("fSearch").addEventListener("input", renderResponseList);
+document.getElementById("fDistrict").addEventListener("change", renderResponseList);
+document.getElementById("fStatus").addEventListener("change", renderResponseList);
+document.getElementById("fBudget").addEventListener("change", renderResponseList);
+document.getElementById("btnClearFilters").addEventListener("click", () => {
+  document.getElementById("fSearch").value = "";
+  document.getElementById("fDistrict").value = "";
+  document.getElementById("fStatus").value = "";
+  document.getElementById("fBudget").value = "";
+  renderResponseList();
+});
+
+/* ============================================================
+   13. RESPONSE DETAIL
+   ============================================================ */
+async function openResponseDetail(key) {
+  state.currentResponseId = key;
+  const r = state.responses.find(x => x._key === key);
+  if (!r) { toast("Ntibyakunze kubona response", "error"); return; }
+
+  showScreen("screenDetail");
+  const body = document.getElementById("detailBody");
+  body.innerHTML = "";
+
+  const s1 = r.shopProfile || r.answers?.section1 || {};
+  const meta = r.meta || {};
+
+  const header = el("div", { class: "bg-maye-primary text-white rounded-maye-lg shadow-maye-md p-5 sm:p-6" });
+  header.appendChild(el("div", { class: "text-xs text-maye-accent font-bold uppercase tracking-wide", text: meta.responseId || "—" }));
+  header.appendChild(el("h2", { class: "text-2xl font-bold mt-1", text: s1.shopName || "Izina ritazwi" }));
+  header.appendChild(el("p", { class: "text-white/80 text-sm mt-1", text: `${s1.ownerName || "—"} • ${s1.ownerPhone || "—"} • ${s1.district || "—"} • ${s1.shopType || "—"}` }));
+  header.appendChild(el("p", { class: "text-white/60 text-xs mt-2", text: `📅 ${meta.interviewDate || "—"} • Submitted by: ${meta.submittedBy || "—"}` }));
+
+  // Action buttons in header
+  const actions = el("div", { class: "flex flex-wrap gap-2 mt-3 no-print" });
+  actions.appendChild(el("button", {
+    type: "button",
+    class: "px-3 py-1.5 rounded-maye-sm bg-white/10 hover:bg-white/20 text-xs font-bold transition",
+    text: "📄 PDF",
+    onclick: () => downloadResponsePdf(r),
+  }));
+  actions.appendChild(el("button", {
+    type: "button",
+    class: "px-3 py-1.5 rounded-maye-sm bg-white/10 hover:bg-white/20 text-xs font-bold transition",
+    text: "📥 JSON",
+    onclick: () => downloadResponseJson(r),
+  }));
+  header.appendChild(actions);
+  body.appendChild(header);
+
+  const tabs = el("div", { class: "bg-maye-surface border border-maye-border rounded-maye-lg shadow-maye-sm overflow-hidden" });
+  const tabBar = el("div", { class: "flex border-b border-maye-border overflow-x-auto" });
+  const tabNames = ["📋 Ibisubizo", "👁 Observations", "📦 Samples", "🔍 Analysis"];
+  const tabContents = {};
+  let activeTab = 0;
+  const tabButtons = [];
+
+  const switchTab = (idx) => {
+    activeTab = idx;
+    tabButtons.forEach((b, i) => {
+      b.className = i === idx
+        ? "px-4 py-3 text-sm font-bold text-maye-primary border-b-2 border-maye-accent bg-maye-muted whitespace-nowrap"
+        : "px-4 py-3 text-sm font-semibold text-maye-text-muted hover:text-maye-primary border-b-2 border-transparent whitespace-nowrap";
+    });
+    Object.entries(tabContents).forEach(([k, v]) => { v.style.display = Number(k) === idx ? "block" : "none"; });
+  };
+  tabNames.forEach((name, idx) => {
+    const b = el("button", { type: "button", text: name });
+    b.addEventListener("click", () => switchTab(idx));
+    tabBar.appendChild(b);
+    tabButtons.push(b);
+  });
+  tabs.appendChild(tabBar);
+
+  // Tab 0: Answers
+  const answersEl = el("div", { class: "p-5 sm:p-6 space-y-4" });
+  SECTIONS.forEach((sec, idx) => {
+    const a = r.answers?.[sec.id] || {};
+    const card = el("div", { class: "border border-maye-border rounded-maye-md p-4" });
+    card.appendChild(el("div", { class: "font-bold text-maye-text-strong mb-2", text: `${idx + 1}. ${sec.title}` }));
+    const grid = el("div", { class: "grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm" });
+    let any = false;
+    sec.fields.forEach(f => {
+      if (!f.label || f.type === "samples" || f.type === "employees" || f.type === "note") return;
+      const v = a[f.key];
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) return;
+      any = true;
+      const row = el("div", { class: "flex flex-col" });
+      row.appendChild(el("span", { class: "text-xs text-maye-text-muted font-semibold", text: f.label }));
+      row.appendChild(el("span", { class: "text-maye-text-base", text: Array.isArray(v) ? v.join(", ") : String(v) }));
+      grid.appendChild(row);
+    });
+    card.appendChild(any ? grid : el("div", { class: "text-maye-text-muted italic text-sm", text: "Nta bisubizo" }));
+    answersEl.appendChild(card);
+  });
+  tabContents[0] = answersEl;
+
+  // Tab 1: Observations
+  const obsEl = el("div", { class: "p-5 sm:p-6 space-y-3" });
+  let anyObs = false;
+  SECTIONS.forEach((sec, idx) => {
+    const o = r.observations?.[sec.id];
+    if (!o) return;
+    anyObs = true;
+    const card = el("div", { class: "bg-maye-muted border border-maye-border rounded-maye-md p-4" });
+    card.appendChild(el("div", { class: "font-bold text-maye-primary-600 text-sm", text: `${idx + 1}. ${sec.title}` }));
+    card.appendChild(el("div", { class: "text-maye-text-base text-sm mt-1 whitespace-pre-wrap", text: o }));
+    obsEl.appendChild(card);
+  });
+  if (!anyObs) obsEl.appendChild(el("div", { class: "text-maye-text-muted italic text-center py-6", text: "Nta observations" }));
+  tabContents[1] = obsEl;
+
+  // Tab 2: Samples
+  const samplesEl = el("div", { class: "p-5 sm:p-6 space-y-3" });
+  if (r.samples?.length) {
+    r.samples.forEach((s, i) => {
+      const card = el("div", { class: "border border-maye-border rounded-maye-md p-4" });
+      card.appendChild(el("div", { class: "font-bold text-maye-text-strong", text: `📦 Sample #${i + 1}: ${s.name || "—"}` }));
+      const grid = el("div", { class: "grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm mt-2" });
+      [["Size", s.size],["Purchase Unit", s.purchaseUnit],["Selling Unit", s.sellingUnit],
+       ["Conversion", s.conversionFactor],["Purchase Price", s.purchasePrice + " " + (s.purchaseCurrency || "")],
+       ["Selling Price", s.sellingPrice + " " + (s.sellingCurrency || "")],
+       ["Stock", s.currentStock],["Supplier", s.supplierName],
+       ["Expires", s.expires ? "Yego" : "Oya"],["Damages Easily", s.damagesEasily ? "Yego" : "Oya"]]
+        .forEach(([k, v]) => {
+          if (v === undefined || v === null || v === "") return;
+          const row = el("div");
+          row.appendChild(el("div", { class: "text-xs text-maye-text-muted font-semibold", text: k }));
+          row.appendChild(el("div", { class: "text-maye-text-base", text: String(v) }));
+          grid.appendChild(row);
+        });
+      card.appendChild(grid);
+      if (s.notes) card.appendChild(el("div", { class: "mt-2 text-sm text-maye-text-base italic", text: s.notes }));
+      samplesEl.appendChild(card);
+    });
+  } else samplesEl.appendChild(el("div", { class: "text-maye-text-muted italic text-center py-6", text: "Nta samples" }));
+  tabContents[2] = samplesEl;
+
+  // Tab 3: Analysis
+  const analysisEl = el("div", { class: "p-5 sm:p-6 space-y-4" });
+  const da = r.developerAnalysis || {};
+  analysisEl.appendChild(el("label", { class: "block text-sm font-bold text-maye-text-strong", text: "Analysis Notes (developer)" }));
+  const notesTa = el("textarea", { class: "w-full bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-maye-accent", rows: 4 });
+  notesTa.value = da.analysisNotes || "";
+  analysisEl.appendChild(notesTa);
+
+  const statusRow = el("div", { class: "grid grid-cols-1 sm:grid-cols-2 gap-3" });
+  const statusWrap = el("div");
+  statusWrap.appendChild(el("label", { class: "block text-xs font-bold text-maye-text-muted mb-1", text: "Status" }));
+  const statusSel = el("select", { class: "w-full bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm" });
+  ["new", "reviewed", "blueprint_ready"].forEach(v => {
+    const o = el("option", { value: v, text: v.replace("_", " ").toUpperCase() });
+    if ((meta.status || "new") === v) o.selected = true;
+    statusSel.appendChild(o);
+  });
+  statusWrap.appendChild(statusSel);
+  statusRow.appendChild(statusWrap);
+
+  const complexWrap = el("div");
+  complexWrap.appendChild(el("label", { class: "block text-xs font-bold text-maye-text-muted mb-1", text: "Complexity" }));
+  const complexSel = el("select", { class: "w-full bg-white border border-maye-border rounded-maye-md px-3.5 py-2.5 text-sm" });
+  ["low", "medium", "high"].forEach(v => {
+    const o = el("option", { value: v, text: v.toUpperCase() });
+    if ((da.complexity || "medium") === v) o.selected = true;
+    complexSel.appendChild(o);
+  });
+  complexWrap.appendChild(complexSel);
+  statusRow.appendChild(complexWrap);
+  analysisEl.appendChild(statusRow);
+
+  const approvedRow = el("div", { class: "flex items-center gap-2 pt-1" });
+  const approvedCheck = el("input", { type: "checkbox", class: "w-5 h-5 accent-maye-success" });
+  approvedCheck.checked = !!da.approved;
+  approvedRow.appendChild(approvedCheck);
+  approvedRow.appendChild(el("label", { class: "text-sm font-semibold text-maye-text-strong", text: "✓ Approved by Developer" }));
+  analysisEl.appendChild(approvedRow);
+
+  const actionBtns = el("div", { class: "flex flex-col sm:flex-row gap-2 pt-2" });
+  const saveBtn = el("button", {
+    type: "button",
+    class: "flex-1 px-5 py-2.5 rounded-maye-md bg-maye-primary hover:bg-maye-primary-600 text-white font-bold shadow-maye-sm transition",
+    text: "💾 Save Analysis",
+  });
+  saveBtn.addEventListener("click", async () => {
+    try {
+      await update(ref(db, `interviewResponses/${key}/developerAnalysis`), {
+        reviewedBy: state.uid, reviewedAt: Date.now(),
+        analysisNotes: notesTa.value, complexity: complexSel.value,
+        approved: approvedCheck.checked,
+        approvedAt: approvedCheck.checked ? Date.now() : null,
+      });
+      await update(ref(db, `interviewResponses/${key}/meta`), {
+        status: statusSel.value, approvedByDeveloper: approvedCheck.checked,
+        approvedAt: approvedCheck.checked ? Date.now() : null,
+        updatedAt: Date.now(),
+      });
+      toast("Analysis yabitswe", "success");
+      const resp = state.responses.find(x => x._key === key);
+      if (resp) {
+        resp.developerAnalysis = { ...(resp.developerAnalysis || {}), analysisNotes: notesTa.value, complexity: complexSel.value, approved: approvedCheck.checked };
+        resp.meta = { ...(resp.meta || {}), status: statusSel.value, approvedByDeveloper: approvedCheck.checked };
+      }
+      renderResponseList();
+      renderStats();
+    } catch (err) {
+      console.error(err);
+      toast("Ntibyakunze kubika analysis", "error");
+    }
+  });
+  actionBtns.appendChild(saveBtn);
+
+  const blueprintBtn = el("button", {
+    type: "button",
+    class: "flex-1 px-5 py-2.5 rounded-maye-md bg-maye-accent hover:brightness-95 text-maye-primary font-bold shadow-maye-sm transition",
+    text: "🔨 Generate Blueprint",
+  });
+  blueprintBtn.addEventListener("click", async () => {
+    const bp = generateBlueprint(r);
+    r.developerAnalysis = r.developerAnalysis || {};
+    r.developerAnalysis.blueprintJson = bp;
+    r.developerAnalysis.detectedModules = bp.detectedModules.map(m => m.moduleId);
+    r.developerAnalysis.detectedEntities = bp.detectedEntities.map(e => e.name);
+    r.developerAnalysis.detectedWorkflows = bp.detectedWorkflows;
+    try {
+      await update(ref(db, `interviewResponses/${key}/developerAnalysis`), {
+        blueprintJson: bp,
+        detectedModules: r.developerAnalysis.detectedModules,
+        detectedEntities: r.developerAnalysis.detectedEntities,
+        detectedWorkflows: r.developerAnalysis.detectedWorkflows,
+      });
+      toast("Blueprint yabitswe", "success");
+    } catch (e) { console.warn("Blueprint save failed", e); }
+    state.currentBlueprint = bp;
+    renderBlueprintScreen(bp);
+    showScreen("screenBlueprint");
+  });
+  actionBtns.appendChild(blueprintBtn);
+  analysisEl.appendChild(actionBtns);
+
+  if (da.blueprintJson) {
+    const bpWrap = el("div", { class: "pt-2" });
+    bpWrap.appendChild(el("button", {
+      type: "button",
+      class: "w-full px-4 py-2 rounded-maye-md bg-maye-muted hover:bg-maye-border text-sm font-semibold text-maye-primary-400",
+      text: "👁 Reba blueprint yabitswe",
+      onclick: () => {
+        state.currentBlueprint = da.blueprintJson;
+        renderBlueprintScreen(da.blueprintJson);
+        showScreen("screenBlueprint");
+      },
+    }));
+    analysisEl.appendChild(bpWrap);
+  }
+  tabContents[3] = analysisEl;
+
+  Object.entries(tabContents).forEach(([k, v]) => {
+    if (Number(k) !== 0) v.style.display = "none";
+    tabs.appendChild(v);
+  });
+
+  body.appendChild(tabs);
+  switchTab(0);
+}
+
+/* ============================================================
+   14. BLUEPRINT SCREEN
+   ============================================================ */
+function renderBlueprintScreen(bp) {
+  document.getElementById("blueprintJson").textContent = JSON.stringify(bp, null, 2);
+}
+
+document.getElementById("btnCopyBlueprint").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById("blueprintJson").textContent);
+    toast("Blueprint yakoporowe", "success");
+  } catch { toast("Copy ntiyakunze — koresha Download", "warn"); }
+});
+
+document.getElementById("btnDownloadBlueprint").addEventListener("click", () => {
+  const txt = document.getElementById("blueprintJson").textContent;
+  const blob = new Blob([txt], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `MAYE-Blueprint-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("JSON yabitswe", "success");
+});
+
+document.getElementById("btnPdfBlueprint").addEventListener("click", () => {
+  if (!state.currentBlueprint) { toast("Nta blueprint iriho", "warn"); return; }
+  generateBlueprintPdf(state.currentBlueprint);
+});
+
+document.getElementById("btnPrintBlueprint").addEventListener("click", () => window.print());
+
+document.getElementById("btnBackFromBlueprint").addEventListener("click", () => {
+  if (state.currentResponseId) openResponseDetail(state.currentResponseId);
+  else showScreen("screenDashboard");
+});
+
+/* ============================================================
+   15. CSV + JSON EXPORT
+   ============================================================ */
+function csvEscape(v) {
+  if (v === null || v === undefined) return "";
+  const s = String(v).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+
+function exportCsv() {
+  const rows = state.responses.map(r => {
+    const s1 = r.shopProfile || r.answers?.section1 || {};
+    const s14 = r.answers?.section14 || {};
+    return {
+      responseId: r.meta?.responseId || r._key,
+      interviewDate: r.meta?.interviewDate || "",
+      shopName: s1.shopName || "", ownerName: s1.ownerName || "", ownerPhone: s1.ownerPhone || "",
+      district: s1.district || "", sector: s1.sector || "", shopType: s1.shopType || "",
+      employeeCount: s1.employeeCount || "", budget: s14.budget || "", timeline: s14.timeline || "",
+      status: r.meta?.status || "new", samplesCount: (r.samples || []).length,
+    };
+  });
+  if (!rows.length) { toast("Nta bisubizo byo kohereza", "warn"); return; }
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(","), ...rows.map(row => headers.map(h => csvEscape(row[h])).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `MAYE-Interviews-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("CSV yabitswe", "success");
+}
+
+function downloadAllResponsesJson() {
+  if (!state.responses.length) { toast("Nta bisubizo", "warn"); return; }
+  const blob = new Blob([JSON.stringify(state.responses, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `MAYE-All-Responses-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("JSON yose yabitswe", "success");
+}
+
+function downloadResponseJson(r) {
+  const blob = new Blob([JSON.stringify(r, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `MAYE-Response-${r.meta?.responseId || r._key}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("JSON yabitswe", "success");
+}
+
+document.getElementById("btnExportCsv").addEventListener("click", exportCsv);
+document.getElementById("btnExportAllJson").addEventListener("click", downloadAllResponsesJson);
+document.getElementById("btnRefreshList").addEventListener("click", loadResponses);
+
+/* ============================================================
+   16. PDF GENERATION (html2pdf)
+   ============================================================ */
+
+// Escape HTML for PDF
+function esc(s) {
+  if (s === null || s === undefined) return "—";
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function formatDate(ts) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleString("en-GB", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function statusBadge(status) {
+  const map = {
+    new: { cls: "pdf-badge-new", label: "NEW" },
+    reviewed: { cls: "pdf-badge-reviewed", label: "REVIEWED" },
+    blueprint_ready: { cls: "pdf-badge-ready", label: "BLUEPRINT READY" },
+  };
+  const m = map[status] || map.new;
+  return `<span class="pdf-badge ${m.cls}">${m.label}</span>`;
+}
+
+function buildResponsePdfHtml(r) {
+  const s1 = r.shopProfile || r.answers?.section1 || {};
+  const meta = r.meta || {};
+  const da = r.developerAnalysis || {};
+  const sections = [];
+
+  // Cover page
+  sections.push(`
+    <div class="pdf-cover" style="page-break-after: always;">
+      <img src="${LOGO_URL}" alt="MAYE" />
+      <div class="pdf-title">MAYE Shop Interview</div>
+      <div class="pdf-subtitle">Response Report</div>
+      <div class="pdf-meta"><strong>${esc(s1.shopName || "Izina ritazwi")}</strong></div>
+      <div class="pdf-meta">${esc(s1.ownerName || "—")} • ${esc(s1.ownerPhone || "—")}</div>
+      <div class="pdf-meta">${esc(s1.district || "—")} • ${esc(s1.shopType || "—")}</div>
+      <div class="pdf-ref">${esc(meta.responseId || "—")}</div>
+      <div class="pdf-meta" style="margin-top: 8mm;">${statusBadge(meta.status)} ${meta.approvedByDeveloper ? '<span class="pdf-badge pdf-badge-ready">✓ APPROVED</span>' : ''}</div>
+      <div class="pdf-meta" style="margin-top: 4mm;">Interview Date: ${esc(meta.interviewDate || "—")}</div>
+      <div class="pdf-meta">Generated: ${formatDate(Date.now())}</div>
+      <div class="pdf-footer" style="margin-top: auto; padding-top: 20mm;">
+        Powered by MAYE SYSTEM • MAYE-SIAP v${APP_VERSION}
+      </div>
+    </div>
+  `);
+
+  // Shop profile
+  sections.push(`
+    <h2>Shop Profile</h2>
+    <div class="pdf-row">
+      <div class="pdf-col"><div class="pdf-label">Shop Name</div><div class="pdf-value">${esc(s1.shopName)}</div></div>
+      <div class="pdf-col"><div class="pdf-label">Owner</div><div class="pdf-value">${esc(s1.ownerName)}</div></div>
+    </div>
+    <div class="pdf-row">
+      <div class="pdf-col"><div class="pdf-label">Phone</div><div class="pdf-value">${esc(s1.ownerPhone)}</div></div>
+      <div class="pdf-col"><div class="pdf-label">District</div><div class="pdf-value">${esc(s1.district)}</div></div>
+    </div>
+    <div class="pdf-row">
+      <div class="pdf-col"><div class="pdf-label">Sector</div><div class="pdf-value">${esc(s1.sector)}</div></div>
+      <div class="pdf-col"><div class="pdf-label">Shop Type</div><div class="pdf-value">${esc(s1.shopType)}</div></div>
+    </div>
+    <div class="pdf-row">
+      <div class="pdf-col"><div class="pdf-label">Employees</div><div class="pdf-value">${esc(s1.employeeCount)}</div></div>
+      <div class="pdf-col"><div class="pdf-label">Year Opened</div><div class="pdf-value">${esc(s1.yearOpened)}</div></div>
+    </div>
+    <div class="pdf-row">
+      <div class="pdf-col"><div class="pdf-label">Electricity</div><div class="pdf-value">${esc(s1.hasElectricity)}</div></div>
+      <div class="pdf-col"><div class="pdf-label">Internet</div><div class="pdf-value">${esc(s1.hasInternet)}</div></div>
+    </div>
+  `);
+
+  // Each section (1 page break between big sections)
+  SECTIONS.forEach((sec, idx) => {
+    const a = r.answers?.[sec.id] || {};
+    const obs = r.observations?.[sec.id];
+    const rows = [];
+    sec.fields.forEach(f => {
+      if (!f.label || f.type === "samples" || f.type === "employees" || f.type === "note") return;
+      const v = a[f.key];
+      if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) return;
+      rows.push(`
+        <div class="pdf-row">
+          <div class="pdf-col" style="flex: 0 0 40mm;"><div class="pdf-label">${esc(f.label)}</div></div>
+          <div class="pdf-col"><div class="pdf-value">${esc(Array.isArray(v) ? v.join(", ") : v)}</div></div>
+        </div>
+      `);
+    });
+    if (sec.id === "section3" && r.samples?.length) {
+      r.samples.forEach((s, i) => {
+        if (!s.name) return;
+        rows.push(`
+          <div class="pdf-card">
+            <div class="pdf-label">Sample #${i + 1}: ${esc(s.name)}</div>
+            <div class="pdf-value">${esc(s.size || "—")} • ${esc(s.purchaseUnit)} → ${esc(s.sellingUnit)} (${esc(s.conversionFactor || "—")})</div>
+            <div class="pdf-value">Buy: ${esc(s.purchasePrice)} ${esc(s.purchaseCurrency)} | Sell: ${esc(s.sellingPrice)} ${esc(s.sellingCurrency)} | Stock: ${esc(s.currentStock)}</div>
+            <div class="pdf-value">Supplier: ${esc(s.supplierName || "—")} | Expires: ${s.expires ? "Yes" : "No"} | Damages: ${s.damagesEasily ? "Yes" : "No"}</div>
+            ${s.notes ? `<div class="pdf-value" style="font-style: italic;">${esc(s.notes)}</div>` : ""}
+          </div>
+        `);
+      });
+    }
+    if (!rows.length) return;
+    sections.push(`
+      <h2 style="page-break-before: auto;">${idx + 1}. ${esc(sec.title)}</h2>
+      ${rows.join("")}
+      ${obs ? `<div class="pdf-card" style="border-left-color: #d4af37; background: #fffbf0;">
+        <div class="pdf-label" style="color: #d4af37;">👁 Observation (interviewer)</div>
+        <div class="pdf-value">${esc(obs)}</div>
+      </div>` : ""}
+    `);
+  });
+
+  // Developer analysis
+  if (da.analysisNotes || da.approved) {
+    sections.push(`
+      <h2 style="page-break-before: always;">Developer Analysis</h2>
+      ${da.reviewedBy ? `<div class="pdf-value"><strong>Reviewed by:</strong> ${esc(da.reviewedBy)}</div>` : ""}
+      ${da.reviewedAt ? `<div class="pdf-value"><strong>Reviewed at:</strong> ${formatDate(da.reviewedAt)}</div>` : ""}
+      ${da.complexity ? `<div class="pdf-value"><strong>Complexity:</strong> ${esc(da.complexity.toUpperCase())}</div>` : ""}
+      ${da.approved ? `<div class="pdf-value"><strong>Approved:</strong> ✓ Yes</div>` : ""}
+      ${da.analysisNotes ? `<div class="pdf-card"><div class="pdf-label">Notes</div><div class="pdf-value">${esc(da.analysisNotes)}</div></div>` : ""}
+    `);
+  }
+
+  return `
+    <div class="pdf-doc">
+      ${sections.join("")}
+      <div class="pdf-footer">
+        MAYE-SIAP v${APP_VERSION} • Generated ${formatDate(Date.now())} • Response ${esc(meta.responseId || "—")}
+      </div>
+    </div>
+  `;
+}
+
+function buildBlueprintPdfHtml(bp) {
+  const s = bp.shopProfile || {};
+  const summary = bp.interviewSummary || {};
+
+  const modulesHtml = (bp.detectedModules || []).map(m => `
+    <div class="pdf-card">
+      <div class="pdf-label">${esc(m.moduleId)} — ${esc(m.priority)} priority</div>
+      <div class="pdf-value">${esc(m.rationale)}</div>
+      <div class="pdf-value"><strong>Entities:</strong> ${esc((m.entities || []).join(", "))}</div>
+      <div class="pdf-value"><strong>Workflows:</strong> ${esc((m.workflows || []).join(", "))}</div>
+      <div class="pdf-value"><strong>Complexity:</strong> ${esc(m.estimatedComplexity)}</div>
+    </div>
+  `).join("");
+
+  const entitiesHtml = (bp.detectedEntities || []).map(e => `
+    <div class="pdf-value"><strong>${esc(e.name)}:</strong> ${esc((e.fields || []).join(", "))}</div>
+  `).join("");
+
+  const workflowsHtml = (bp.detectedWorkflows || []).map(w => `<div class="pdf-value">• ${esc(w)}</div>`).join("");
+  const rulesHtml = (bp.businessRules || []).map(r => `<div class="pdf-value">• ${esc(r)}</div>`).join("");
+
+  const sampleTxHtml = (bp.sampleTransactions || []).map(tx => `
+    <div class="pdf-card">
+      <div class="pdf-value"><strong>${esc(tx.description)}</strong></div>
+      <div class="pdf-value">Revenue: ${esc(tx.totalRevenue)} | Cost: ${esc(tx.totalCost)} | Profit: ${esc(tx.profit)} (${esc(tx.profitMargin)}%)</div>
+    </div>
+  `).join("");
+
+  const testsHtml = (bp.acceptanceTests || []).map(t => `<div class="pdf-value">☐ ${esc(t)}</div>`).join("");
+
+  return `
+    <div class="pdf-doc">
+      <div class="pdf-cover" style="page-break-after: always;">
+        <img src="${LOGO_URL}" alt="MAYE" />
+        <div class="pdf-title">Development Blueprint</div>
+        <div class="pdf-subtitle">Inventory Management System</div>
+        <div class="pdf-meta"><strong>${esc(summary.shopName || s.shopName || "—")}</strong></div>
+        <div class="pdf-meta">${esc(summary.ownerName || s.ownerName || "—")} • ${esc(summary.district || s.district || "—")}</div>
+        <div class="pdf-ref">${esc(bp.blueprintId || "BP-XXXXX")}</div>
+        <div class="pdf-meta" style="margin-top: 4mm;">Source: ${esc((bp.sourceResponseIds || []).join(", "))}</div>
+        <div class="pdf-meta">Generated: ${formatDate(bp.generatedAt)}</div>
+        <div class="pdf-footer" style="margin-top: auto; padding-top: 20mm;">
+          Powered by MAYE SYSTEM • MAYE-SIAP v${APP_VERSION}
+        </div>
+      </div>
+
+      <h2>Interview Summary</h2>
+      <div class="pdf-row">
+        <div class="pdf-col"><div class="pdf-label">Shop</div><div class="pdf-value">${esc(summary.shopName)}</div></div>
+        <div class="pdf-col"><div class="pdf-label">Owner</div><div class="pdf-value">${esc(summary.ownerName)}</div></div>
+      </div>
+      <div class="pdf-row">
+        <div class="pdf-col"><div class="pdf-label">District</div><div class="pdf-value">${esc(summary.district)}</div></div>
+        <div class="pdf-col"><div class="pdf-label">Shop Type</div><div class="pdf-value">${esc(summary.shopType)}</div></div>
+      </div>
+      <div class="pdf-row">
+        <div class="pdf-col"><div class="pdf-label">Employees</div><div class="pdf-value">${esc(summary.employeeCount)}</div></div>
+        <div class="pdf-col"><div class="pdf-label">Budget</div><div class="pdf-value">${esc(summary.budget)}</div></div>
+      </div>
+      <div class="pdf-row">
+        <div class="pdf-col"><div class="pdf-label">Timeline</div><div class="pdf-value">${esc(summary.timeline)}</div></div>
+        <div class="pdf-col"><div class="pdf-label">Smartphone</div><div class="pdf-value">${summary.hasSmartphone ? "Yes" : "No"}</div></div>
+      </div>
+      <div class="pdf-row">
+        <div class="pdf-col"><div class="pdf-label">Internet</div><div class="pdf-value">${esc(summary.internetQuality)}</div></div>
+      </div>
+
+      <h2 style="page-break-before: always;">Detected Modules</h2>
+      ${modulesHtml}
+
+      <h2 style="page-break-before: always;">Detected Entities</h2>
+      ${entitiesHtml}
+
+      <h2>Detected Workflows</h2>
+      ${workflowsHtml}
+
+      <h2>Business Rules</h2>
+      ${rulesHtml}
+
+      <h2 style="page-break-before: always;">Sample Transactions</h2>
+      ${sampleTxHtml}
+
+      <h2>Acceptance Tests</h2>
+      ${testsHtml}
+
+      <div class="pdf-footer">
+        MAYE-SIAP v${APP_VERSION} • Blueprint ${esc(bp.blueprintId || "—")} • Generated ${formatDate(bp.generatedAt)}
+      </div>
+    </div>
+  `;
+}
+
+async function generatePdfFromHtml(html, filename) {
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  try {
+    toast("⏳ Turakora PDF...", "warn");
+    await html2pdf().set({
+      margin: 0,
+      filename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+    }).from(container.firstElementChild).save();
+    toast("PDF yabitswe", "success");
+  } catch (err) {
+    console.error(err);
+    toast("PDF ntiyakunze — gerageza Print", "error");
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+function downloadResponsePdf(r) {
+  const html = buildResponsePdfHtml(r);
+  const filename = `MAYE-Response-${r.meta?.responseId || r._key}-${Date.now()}.pdf`;
+  generatePdfFromHtml(html, filename);
+}
+
+function generateBlueprintPdf(bp) {
+  const html = buildBlueprintPdfHtml(bp);
+  const filename = `MAYE-Blueprint-${bp.blueprintId || "BP"}-${Date.now()}.pdf`;
+  generatePdfFromHtml(html, filename);
+}
+
+/* ============================================================
+   17. ADMIN ACCESS FLOW
+   ============================================================ */
+async function checkAdminAccess() {
+  if (!state.uid) {
+    setAdminGateMsg("Nta UID — Anonymous Auth iracyakora. Tegereza.", "warn");
+    return false;
+  }
+  try {
+    const snap = await get(ref(db, `systemSettings/interviewFlags/adminAllowList/${state.uid}`));
+    if (snap.exists() && snap.val() === true) {
+      state.isAdmin = true;
+      return true;
+    }
+    setAdminGateMsg("UID yawe ntabwo iri muri adminAllowList. Kurikiza amabwiriza hejuru.", "error");
+    return false;
+  } catch (err) {
+    console.error(err);
+    setAdminGateMsg("Ntibyakunze kugenzura access. Reba amabwiriza ya database.rules.json.", "error");
+    return false;
+  }
+}
+
+function setAdminGateMsg(text, type) {
+  const el = document.getElementById("adminGateMsg");
+  el.textContent = text;
+  el.className = "mt-4 text-sm font-semibold rounded-maye-md px-4 py-2.5 " + (
+    type === "error" ? "bg-maye-danger/10 text-maye-danger border border-maye-danger/30"
+    : type === "warn" ? "bg-maye-warning/10 text-maye-warning border border-maye-warning/30"
+    : "bg-maye-success/10 text-maye-success border border-maye-success/30"
+  );
+  el.classList.remove("hidden");
+}
+
+document.getElementById("btnToggleUid").addEventListener("click", () => {
+  state.uidVisible = !state.uidVisible;
+  const uidEl = document.getElementById("adminUid");
+  const btn = document.getElementById("btnToggleUid");
+  if (state.uidVisible) {
+    uidEl.classList.remove("blur-sm", "select-none");
+    btn.textContent = "🙈 Hisha UID";
+  } else {
+    uidEl.classList.add("blur-sm", "select-none");
+    btn.textContent = "👁 Erekana UID";
+  }
+});
+
+document.getElementById("btnAdminAccess").addEventListener("click", async () => {
+  const uidEl = document.getElementById("adminUid");
+  uidEl.textContent = state.uid || "—";
+  uidEl.classList.add("blur-sm", "select-none");
+  state.uidVisible = false;
+  document.getElementById("btnToggleUid").textContent = "👁 Erekana UID";
+  document.getElementById("adminGateMsg").classList.add("hidden");
+  showScreen("screenAdminGate");
+  const ok = await checkAdminAccess();
+  if (ok) { showScreen("screenDashboard"); loadResponses(); }
+});
+
+document.getElementById("btnAdminRetry").addEventListener("click", async () => {
+  const ok = await checkAdminAccess();
+  if (ok) { showScreen("screenDashboard"); loadResponses(); }
+});
+
+document.getElementById("btnAdminCancel").addEventListener("click", () => {
+  showScreen("screenWelcome");
+});
+
+/* ============================================================
+   18. HELP MODAL
+   ============================================================ */
+function openHelp() {
+  document.getElementById("helpModal").classList.remove("hidden");
+  document.getElementById("helpModal").classList.add("flex");
+}
+function closeHelp() {
+  document.getElementById("helpModal").classList.add("hidden");
+  document.getElementById("helpModal").classList.remove("flex");
+}
+document.getElementById("btnHelp")?.addEventListener("click", openHelp);
+document.getElementById("btnShowHelp")?.addEventListener("click", openHelp);
+document.getElementById("btnCloseHelp")?.addEventListener("click", closeHelp);
+document.getElementById("btnCloseHelp2")?.addEventListener("click", closeHelp);
+
+/* ============================================================
+   19. NAVIGATION
+   ============================================================ */
+document.getElementById("btnStartInterview").addEventListener("click", () => {
+  state.currentSection = 0;
+  state.answers = {};
+  state.observations = {};
+  state.samples = [newSample()];
+  showScreen("screenInterview");
+  renderSection();
+});
+
+document.getElementById("btnResumeDraft").addEventListener("click", async () => {
+  const d = await loadDraft();
+  if (!d) { toast("Nta draft ibonetse", "warn"); return; }
+  state.currentSection = d.currentSection || 0;
+  state.answers = d.answers || {};
+  state.observations = d.observations || {};
+  state.samples = d.samples && d.samples.length ? d.samples : [newSample()];
+  showScreen("screenInterview");
+  renderSection();
+});
+
+document.getElementById("btnPrevSection").addEventListener("click", () => {
+  if (state.currentSection > 0) { state.currentSection--; renderSection(); }
+});
+
+document.getElementById("btnNextSection").addEventListener("click", () => {
+  const missing = validateSection(state.currentSection);
+  if (missing.length) { toast("Bura ibisubizo: " + missing.slice(0, 3).join(", "), "error"); return; }
+  if (state.currentSection < TOTAL_SECTIONS - 1) {
+    state.currentSection++; renderSection();
+  } else {
+    renderReview(); showScreen("screenReview");
+  }
+});
+
+document.getElementById("btnBackToEdit").addEventListener("click", () => {
+  state.currentSection = 0;
+  showScreen("screenInterview");
+  renderSection();
+});
+
+document.getElementById("btnSubmit").addEventListener("click", submitInterview);
+
+document.getElementById("btnNewInterview").addEventListener("click", () => {
+  state.currentSection = 0;
+  state.answers = {};
+  state.observations = {};
+  state.samples = [newSample()];
+  showScreen("screenWelcome");
+});
+
+document.getElementById("btnBackToList").addEventListener("click", () => {
+  showScreen("screenDashboard");
+  loadResponses();
+});
+
+/* ============================================================
+   20. ONLINE / OFFLINE
+   ============================================================ */
+window.addEventListener("online", () => { state.online = true; updateConnBadge(); syncPending(); });
+window.addEventListener("offline", () => { state.online = false; updateConnBadge(); });
+
+function updateConnBadge() {
+  const b = document.getElementById("connBadge");
+  if (!b) return;
+  if (state.online) b.innerHTML = `<span class="w-2 h-2 rounded-full bg-maye-success"></span> Online`;
+  else b.innerHTML = `<span class="w-2 h-2 rounded-full bg-maye-danger"></span> Offline`;
+}
+
+/* ============================================================
+   21. ANONYMOUS AUTH + BOOT
+   ============================================================ */
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    state.uid = user.uid;
+    console.log("[MAYE] Anonymous UID:", user.uid);
+    updateConnBadge();
+    await checkForDraftAndPending();
+  } else {
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      console.error("Anonymous auth failed:", err);
+      document.getElementById("loadingError").textContent =
+        "Anonymous Auth ntikora. Reba ko Anonymous Auth yemewe muri Firebase Console → Authentication → Sign-in method.";
+      document.getElementById("loadingError").classList.remove("hidden");
+    }
+  }
+});
+
+async function checkForDraftAndPending() {
+  document.getElementById("screenLoading").classList.remove("active", "flex-active");
+  const d = await loadDraft();
+  if (d && d.savedAt) document.getElementById("btnResumeDraft").classList.remove("hidden");
+  await syncPending();
+  showScreen("screenWelcome");
+
+  // Show Admin Access button ONLY if URL has ?admin=1
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("admin") === "1") {
+    document.getElementById("btnAdminAccess").classList.remove("hidden");
+  }
+}
+
+/* ============================================================
+   22. SERVICE WORKER
+   ============================================================ */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(reg => console.log("[MAYE] SW registered:", reg.scope))
+      .catch(err => console.warn("[MAYE] SW registration failed:", err));
+  });
+}
+
+/* ============================================================
+   23. FALLBACK
+   ============================================================ */
+setTimeout(() => {
+  if (state.screen === "screenLoading" && !state.uid) {
+    document.getElementById("loadingError").textContent =
+      "Anonymous Auth iracyatinda. Reba internet cyangwa Firebase Console → Authentication.";
+    document.getElementById("loadingError").classList.remove("hidden");
+  }
+}, 8000);
+</script>
+</body>
+</html>
